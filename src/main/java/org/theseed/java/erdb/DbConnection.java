@@ -11,6 +11,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Savepoint;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -101,6 +102,50 @@ public abstract class DbConnection implements AutoCloseable {
     }
 
     /**
+     * This is a resource class that manages a transaction.  The transaction is rolled back if it is
+     * not committed before it goes out of scope.
+     */
+    public class Transaction implements AutoCloseable {
+
+        /** original value of autocommit */
+        private boolean oldCommit;
+        /** TRUE if the transaction was successful */
+        private boolean committed;
+        /** savepoint for this transaction */
+        private Savepoint start;
+
+        /**
+         * Create the transaction.
+         *
+         * @throws SQLException
+         */
+        public Transaction() throws SQLException {
+            this.oldCommit = DbConnection.this.db.getAutoCommit();
+            DbConnection.this.db.setAutoCommit(false);
+            this.start = DbConnection.this.db.setSavepoint();
+            this.committed = false;
+        }
+
+        /**
+         * Indicate that the transaction was successful and should be committed.
+         */
+        public void commit() {
+            this.committed = true;
+        }
+
+        @Override
+        public void close() throws SQLException {
+            if (this.committed)
+                DbConnection.this.db.commit();
+            else
+                DbConnection.this.db.rollback(this.start);
+            // Restore the auto-commit status.
+            DbConnection.this.db.setAutoCommit(this.oldCommit);
+        }
+
+    }
+
+    /**
      * Connect to the database using the specified connect string.
      *
      * @param connectString		database connection string
@@ -186,10 +231,8 @@ public abstract class DbConnection implements AutoCloseable {
     public void scriptUpdate(File inFile) throws SQLException, IOException {
         Statement stmt = this.db.createStatement();
         StringBuilder buffer = new StringBuilder();
-        boolean oldCommit = this.db.getAutoCommit();
-        boolean done = false;
-        try (LineReader sqlStream = new LineReader(inFile)) {
-            this.db.setAutoCommit(false);
+       try (LineReader sqlStream = new LineReader(inFile);
+               Transaction xact = this.new Transaction()) {
             while (sqlStream.hasNext()) {
                 String line = StringUtils.trim(sqlStream.next());
                 buffer.append(line);
@@ -205,15 +248,8 @@ public abstract class DbConnection implements AutoCloseable {
             // Execute the batch.
             stmt.executeBatch();
             // Commit the updates.
-            this.db.commit();
-            done = true;
+            xact.commit();
         } finally {
-            // If we did not commit, do a rollback.
-            if (! done)
-                this.db.rollback();
-            // Restore the auto-commit state.
-            this.db.setAutoCommit(oldCommit);
-            // Close off the statement.
             stmt.close();
         }
     }
