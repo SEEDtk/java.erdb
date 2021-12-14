@@ -60,6 +60,8 @@ public abstract class DbConnection implements AutoCloseable {
             + "	);",
             "CREATE UNIQUE INDEX idx__fields ON _fields (table_name, field_name);"
         };
+    /** array to search for fields table */
+    private static final String[] TABLE_SEARCH = new String[] { "TABLE" };
 
     /**
      * This interface is used by the individual database connection services to get the database
@@ -74,6 +76,16 @@ public abstract class DbConnection implements AutoCloseable {
          * @return the database file (for OBFF systems like SQLite)
          */
         public File getDbFile();
+
+        /**
+         * @return the database parameter string (often contains name and password)
+         */
+        public String getParms();
+
+        /**
+         * @return the database URL string (often contains host and name)
+         */
+        public String getDbUrl();
 
     }
 
@@ -159,14 +171,12 @@ public abstract class DbConnection implements AutoCloseable {
         // Create the table map.  It is initialized lazily: that is, we store each table
         // definition when the table is first used.
         this.tableMap = new TreeMap<String, DbTable>();
-        // Create the field-type query.  If the fields meta-table does not exist, we will create it here.
-        try {
-            this.prepareFieldTypeQuery();
-        } catch (SQLException e) {
-            // Here we are missing the fields table.  Create this table now.
+        // Insure the fields table exists.
+        ResultSet resultSet = this.metaData.getTables(this.getCatalog(), this.getSchema(), "_fields", TABLE_SEARCH);
+        if (! resultSet.next())
             this.createFieldTable();
-            this.prepareFieldTypeQuery();
-        }
+        // Create the field-type query.
+        this.prepareFieldTypeQuery();
     }
 
     /**
@@ -266,7 +276,7 @@ public abstract class DbConnection implements AutoCloseable {
      */
     public List<String> getTableNames() throws SQLException {
         List<String> retVal = new ArrayList<String>();
-        ResultSet results = this.metaData.getTables(this.getCatalog(), this.getSchema(), null, null);
+        ResultSet results = this.metaData.getTables(this.getCatalog(), this.getSchema(), null, TABLE_SEARCH);
         while (results.next()) {
             String tableName = results.getString("TABLE_NAME");
             if (! tableName.startsWith("_"))
@@ -297,8 +307,8 @@ public abstract class DbConnection implements AutoCloseable {
             Set<String> unDropped = new HashSet<String>(tables);
             // This map tells us the tables dependent on this one.
             Map<String, Set<String>> exportMap = new HashMap<String, Set<String>>(tables.size() * 4 / 3 + 1);
-            String catalog = this.db.getCatalog();
-            String schema = this.db.getSchema();
+            String catalog = this.getCatalog();
+            String schema = this.getSchema();
             for (String table : tables) {
                 ResultSet exports = this.metaData.getExportedKeys(catalog, schema, table);
                 Set<String> exportSet = new TreeSet<String>();
@@ -375,8 +385,10 @@ public abstract class DbConnection implements AutoCloseable {
      * @return the field type for the specified type string
      *
      * @param string	type string to parse
+     *
+     * @throws SQLException
      */
-    protected abstract DbType parseType(String string);
+    protected abstract DbType parseType(String string) throws SQLException;
 
     /**
      * Store a quoted string in the specified text buffer.

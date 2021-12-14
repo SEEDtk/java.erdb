@@ -30,7 +30,7 @@ public class DbTable {
     private String name;
     /** map of field names to types */
     private Map<String, Field> fields;
-    /** map of target table names to join equality strings */
+    /** map of target table names to join equality strings, with all keys normalized to lower-case */
     private Map<String, Link> links;
     /** name of primary key */
     private String keyName;
@@ -226,12 +226,12 @@ public class DbTable {
         if (results.getInt("KEY_SEQ") != 1)
             throw new SQLException("NOT SUPPORTED: Multi-field link found in table " + name + ".");
         // Form the join condition.
-        String link1Name = results.getString("PKTABLE_NAME");
+        String link1Name = results.getString("PKTABLE_NAME").toLowerCase();
         String link1Col = results.getString("PKCOLUMN_NAME");
-        String link2Name = results.getString("FKTABLE_NAME");
+        String link2Name = results.getString("FKTABLE_NAME").toLowerCase();
         String link2Col = results.getString("FKCOLUMN_NAME");
         // Determine which table is not us.  That is the target table.
-        if (link1Name.contentEquals(this.name)) {
+        if (link1Name.contentEquals(this.name.toLowerCase())) {
             // Here we are linking out.
             this.links.put(link2Name, new Link(link1Col, link2Col));
         } else {
@@ -284,7 +284,7 @@ public class DbTable {
      * @param tName		name of other table to which to link
      */
     public Link getLink(String tName) {
-        return this.links.get(tName);
+        return this.links.get(tName.toLowerCase());
     }
 
     /**

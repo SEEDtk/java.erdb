@@ -21,6 +21,8 @@ import org.theseed.java.erdb.DbConnection;
  *
  * --type		type of database (default SQLITE)
  * --dbfile		database file name (SQLITE only)
+ * --url		URL of database (host and name)
+ * --parms		database connection parameter string (currently only MySQL)
  *
  * @author Bruce Parrello
  *
@@ -41,11 +43,21 @@ public abstract class BaseDbProcessor extends BaseProcessor implements DbConnect
     @Option(name = "--dbfile", metaVar = "sqlite.db", usage = "name of the database file (for SQLITE)")
     private File dbFile;
 
+    /** database URL for network-based databases */
+    @Option(name = "--url", metaVar = "localhost/mainDB", usage = "database resource location (for MySQL)")
+    private String dbUrl;
+
+    /** database parameter string */
+    @Option(name = "--parms", metaVar="user=xxx&pass=YYY", usage = "database parameter string (for MySQL")
+    private String dbParms;
+
 
     @Override
     protected final void setDefaults() {
         this.dbEngine = DbConnection.Type.SQLITE;
         this.dbFile = null;
+        this.dbUrl = null;
+        this.dbParms = null;
         this.setDbDefaults();
     }
 
@@ -71,6 +83,16 @@ public abstract class BaseDbProcessor extends BaseProcessor implements DbConnect
     @Override
     public File getDbFile() {
         return this.dbFile;
+    }
+
+    @Override
+    public String getDbUrl() {
+        return this.dbUrl;
+    }
+
+    @Override
+    public String getParms() {
+        return this.dbParms;
     }
 
 }

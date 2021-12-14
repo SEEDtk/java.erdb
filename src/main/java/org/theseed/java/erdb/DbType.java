@@ -121,8 +121,10 @@ public enum DbType {
      *
      * @param db			parent database connection
      * @param string		data type string to parse
+     *
+     * @throws SQLException
      */
-    public static DbType parse(DbConnection db, String string) {
+    public static DbType parse(DbConnection db, String string) throws SQLException {
         return db.parseType(string);
     }
 
