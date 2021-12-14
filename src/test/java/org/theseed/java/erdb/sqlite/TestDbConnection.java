@@ -46,11 +46,6 @@ public class TestDbConnection {
         assertThat("Milliseconds is nullable", ! tracks.isNullable("Milliseconds"));
         assertThat("Bytes is not nullable", tracks.isNullable("Bytes"));
         assertThat("UnitPrice is nullable", ! tracks.isNullable("UnitPrice"));
-        assertThat(tracks.getLink("albums"), equalTo("[albums].[AlbumId] = [tracks].[AlbumId]"));
-        assertThat(tracks.getLink("genres"), equalTo("[genres].[GenreId] = [tracks].[GenreId]"));
-        assertThat(tracks.getLink("media_types"), equalTo("[media_types].[MediaTypeId] = [tracks].[MediaTypeId]"));
-        assertThat(tracks.getLink("invoice_items"), equalTo("[tracks].[TrackId] = [invoice_items].[TrackId]"));
-        assertThat(tracks.getLink("playlist_track"), equalTo("[tracks].[TrackId] = [playlist_track].[TrackId]"));
         assertThat(tracks.getLink("artists"), nullValue());
     }
 
@@ -80,8 +75,6 @@ public class TestDbConnection {
             assertThat("base_count is nullable", ! rnaSampleTable.isNullable("base_count"));
             assertThat(rnaSampleTable.getType("feat_data"), equalTo(DbType.DOUBLE_ARRAY));
             assertThat(rnaSampleTable.getType("suspicious"), equalTo(DbType.BOOLEAN));
-            assertThat(rnaSampleTable.getLink("Genome"), equalTo("[Genome].[genome_id] = [RnaSample].[genome_id]"));
-            assertThat(rnaSampleTable.getLink("Measurement"), equalTo("[RnaSample].[sample_id] = [Measurement].[sample_id]"));
             List<String> tables = db.getTableNames();
             assertThat(tables, containsInAnyOrder("FeatureGroup", "Genome", "Feature", "FeatureToGroup", "RnaSample",
                     "SampleCluster", "Measurement"));

@@ -31,9 +31,43 @@ public class DbTable {
     /** map of field names to types */
     private Map<String, Field> fields;
     /** map of target table names to join equality strings */
-    private Map<String, String> links;
+    private Map<String, Link> links;
     /** name of primary key */
     private String keyName;
+
+    /**
+     * This object describes a link between two tables.  It contains the field name in this table and
+     * the field name in the target table.
+     */
+    public static class Link {
+
+        /** field name in this table */
+        private String localField;
+        /** field name in the target table */
+        private String otherField;
+
+        /**
+         * Specify a link from this table to another.
+         *
+         * @param local		field name for this table
+         * @param other		equivalent field in the other table
+         */
+        protected Link(String local, String other) {
+            this.localField = local;
+            this.otherField = other;
+        }
+
+        /**
+         * Store this link in an SQL statement buffer.
+         *
+         * @param buffer		target SQL statement buffer
+         * @param source		name of the source table
+         * @param target		name of the target table
+         */
+        public void store(SqlBuffer buffer, String source, String target) {
+            buffer.quote(source, this.localField).append(" = ").quote(target, this.otherField);
+        }
+    }
 
     /**
      * This object describes a field in a table.
@@ -163,16 +197,15 @@ public class DbTable {
                 }
             }
             // Get the foreign keys (if any).  We link each connected table name to its join condition.
-            SqlBuffer buffer = new SqlBuffer(db);
-            retVal.links = new TreeMap<String, String>();
+            retVal.links = new TreeMap<String, Link>();
             // The imported keys are many-to-one relationships:  the target table's primary key appears in retVal.table.
             results = meta.getImportedKeys(catalog, schema, name);
             while (results.next())
-                retVal.storeLink(buffer, results);
+                retVal.storeLink(results);
             // The exported keys are many-to-one relationships:  retVal.table's primary key appears in the target table.
             results = meta.getExportedKeys(catalog, schema, name);
             while (results.next())
-                retVal.storeLink(buffer, results);
+                retVal.storeLink(results);
             if (log.isInfoEnabled()) {
                 String pkey = (retVal.keyName == null ? "(none)" : retVal.keyName);
                 log.info("{} columns and {} foreign keys found in table {} with primary key {}.",
@@ -185,11 +218,11 @@ public class DbTable {
     /**
      * Store a link to another table.
      *
-     * @param buffer			buffer for creating the JOIN clause
      * @param results			result set positioned on the current link
+     *
      * @throws SQLException
      */
-    private void storeLink(SqlBuffer buffer, ResultSet results) throws SQLException {
+    private void storeLink(ResultSet results) throws SQLException {
         if (results.getInt("KEY_SEQ") != 1)
             throw new SQLException("NOT SUPPORTED: Multi-field link found in table " + name + ".");
         // Form the join condition.
@@ -197,11 +230,14 @@ public class DbTable {
         String link1Col = results.getString("PKCOLUMN_NAME");
         String link2Name = results.getString("FKTABLE_NAME");
         String link2Col = results.getString("FKCOLUMN_NAME");
-        buffer.clear();
-        buffer.quote(link1Name, link1Col).append(" = ").quote(link2Name, link2Col);
         // Determine which table is not us.  That is the target table.
-        String target = (link1Name.contentEquals(this.name) ? link2Name : link1Name);
-        this.links.put(target, buffer.toString());
+        if (link1Name.contentEquals(this.name)) {
+            // Here we are linking out.
+            this.links.put(link2Name, new Link(link1Col, link2Col));
+        } else {
+            // Here we are linking in.
+            this.links.put(link1Name, new Link(link2Col, link1Col));
+        }
     }
 
     /**
@@ -215,11 +251,11 @@ public class DbTable {
      * @return the type of a field
      *
      * @param fName		name of the field whose type is desired
+     *
+     * @throws SQLException
      */
-    public DbType getType(String fName) {
-        DbTable.Field field = this.fields.get(fName);
-        if (field == null)
-            throw new IllegalArgumentException("No field \"" + fName + "\" found in " + this.name);
+    public DbType getType(String fName) throws SQLException {
+        DbTable.Field field = this.getField(fName);
         return field.type;
     }
 
@@ -227,11 +263,11 @@ public class DbTable {
      * @return TRUE if a field is nullable, else FALSE
      *
      * @param fName		name of the field whose nullability needs to be known
+     *
+     * @throws SQLException
      */
-    public boolean isNullable(String fName) {
-        DbTable.Field field = this.fields.get(fName);
-        if (field == null)
-            throw new IllegalArgumentException("No field \"" + fName + "\" found in " + this.name);
+    public boolean isNullable(String fName) throws SQLException {
+        DbTable.Field field = this.getField(fName);
         return field.nullable;
     }
 
@@ -247,7 +283,7 @@ public class DbTable {
      *
      * @param tName		name of other table to which to link
      */
-    public String getLink(String tName) {
+    public Link getLink(String tName) {
         return this.links.get(tName);
     }
 
@@ -256,6 +292,20 @@ public class DbTable {
      */
     public String getKeyName() {
         return this.keyName;
+    }
+
+    /**
+     * @return the descriptor for the named field
+     *
+     * @param field		name of the desired field
+     *
+     * @throws SQLException
+     */
+    public Field getField(String field) throws SQLException {
+        DbTable.Field retVal = this.fields.get(field);
+        if (field == null)
+            throw new SQLException("No field \"" + field + "\" found in " + this.name);
+        return retVal;
     }
 
 }

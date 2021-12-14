@@ -3,6 +3,8 @@
  */
 package org.theseed.java.erdb;
 
+import org.apache.commons.lang3.StringUtils;
+
 /**
  * This object is an extension of a string builder that contains special methods for creating
  * SQL statements in a database-independent way.
@@ -91,6 +93,26 @@ public class SqlBuffer {
     }
 
     /**
+     * Append a delimiter to the SQL statement if the statement is non-empty.
+     *
+     * @param delim		delimiter to append
+     *
+     * @return this object, for fluent invocation
+     */
+    public SqlBuffer appendDelim(String delim) {
+        if (this.buffer.length() > 0)
+            this.buffer.append(delim);
+        return this;
+    }
+
+    /**
+     * @return TRUE if the buffer is empty, else FALSE
+     */
+    public boolean isEmpty() {
+        return (this.buffer.length() <= 0);
+    }
+
+    /**
      * Reset the buffer for another command.
      *
      * @return this object, for fluent invocation
@@ -113,7 +135,7 @@ public class SqlBuffer {
             throw new IllegalArgumentException("Mark count cannot be 0.");
         this.buffer.append("(?");
         for (int i = 1; i < count; i++)
-            this.buffer.append(", ?");
+            this.buffer.append(",?");
         this.buffer.append(")");
         this.markCount += count;
         return this;
@@ -129,9 +151,9 @@ public class SqlBuffer {
     public SqlBuffer addFields(String[] names) {
         if (names.length <= 0)
             throw new IllegalArgumentException("Field count cannot be 0.");
-        this.buffer.append('(').append(names[0]);
+        this.append("(").quote(names[0]);
         for (int i = 1; i < names.length; i++)
-            this.buffer.append(", ").append(names[i]);
+            this.append(", ").quote(names[i]);
         this.buffer.append(')');
         return this;
     }
@@ -146,6 +168,42 @@ public class SqlBuffer {
      */
     public int getMarkCount() {
         return this.markCount;
+    }
+
+    /**
+     * Append the contents of another SQL buffer to this one.
+     *
+     * @param other		other buffer to append
+     *
+     * @return this object, for fluent invocation
+     */
+    public SqlBuffer append(SqlBuffer other) {
+        this.buffer.append(other.buffer);
+        return this;
+    }
+
+    /**
+     * Append a parameter mark.
+     *
+     * @return this object, for fluent invocation
+     */
+    public SqlBuffer appendMark() {
+        this.buffer.append("?");
+        this.markCount++;
+        return this;
+    }
+
+    /**
+     * Quote a field specification.  This consists of a table name, a dot, and a field name.
+     *
+     * @param fieldSpec		field specification to quote
+     *
+     * @return this object, for fluent invocation
+     */
+    public SqlBuffer quoteSpec(String fieldSpec) {
+        String[] parts = StringUtils.split(fieldSpec, ".", 2);
+        this.quote(parts[0], parts[1]);
+        return this;
     }
 
 

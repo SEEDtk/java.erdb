@@ -6,6 +6,7 @@ package org.theseed.java.erdb.types;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 
 import org.theseed.java.erdb.DbValue;
 
@@ -44,13 +45,43 @@ public class DbInteger extends DbValue {
     }
 
     @Override
-    protected void store(PreparedStatement stmt, int idx) throws SQLException {
+    protected void storeValue(PreparedStatement stmt, int idx) throws SQLException {
         stmt.setInt(idx, this.value);
     }
 
     @Override
-    protected void fetch(ResultSet results, int idx) throws SQLException {
+    protected void fetchValue(ResultSet results, int idx) throws SQLException {
         this.value = results.getInt(idx);
+    }
+
+    @Override
+    public int getInt() {
+        return this.value;
+    }
+
+    @Override
+    public double getDouble() {
+        return (double) this.value;
+    }
+
+    @Override
+    public String getString() {
+        return Integer.toString(this.value);
+    }
+
+    /**
+     * Store an integer value in this value holder.
+     *
+     * @param val	value to store
+     */
+    public void set(int val) {
+        this.value = val;
+        this.setNotNull();
+    }
+
+    @Override
+    protected int getSqlType() {
+        return Types.INTEGER;
     }
 
 }

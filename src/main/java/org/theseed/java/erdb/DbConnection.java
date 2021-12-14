@@ -414,5 +414,17 @@ public abstract class DbConnection implements AutoCloseable {
         return retVal;
     }
 
+    /**
+     * @return a prepared statement based on the SQL buffer.
+     *
+     * @param buffer	SQL buffer containing the statement text (with parameter marks)
+     *
+     * @throws SQLException
+     */
+    public PreparedStatement createStatement(SqlBuffer buffer) throws SQLException {
+        PreparedStatement retVal = this.db.prepareStatement(buffer.toString());
+        return retVal;
+    }
+
 
 }

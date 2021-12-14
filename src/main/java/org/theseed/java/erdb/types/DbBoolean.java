@@ -6,6 +6,7 @@ package org.theseed.java.erdb.types;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 
 import org.theseed.java.erdb.DbValue;
 
@@ -44,15 +45,35 @@ public class DbBoolean extends DbValue {
     }
 
     @Override
-    protected void store(PreparedStatement stmt, int idx) throws SQLException {
+    protected void storeValue(PreparedStatement stmt, int idx) throws SQLException {
         int flag = (this.value ? 1 : 0);
         stmt.setInt(idx, flag);
     }
 
     @Override
-    protected void fetch(ResultSet results, int idx) throws SQLException {
+    protected void fetchValue(ResultSet results, int idx) throws SQLException {
         int flag = results.getInt(idx);
         this.value = (flag != 0);
+    }
+
+    @Override
+    public int getInt() {
+        return (this.value ? 1 : 0);
+    }
+
+    @Override
+    public double getDouble() {
+        return (this.value ? 1.0 : 0.0);
+    }
+
+    @Override
+    public String getString() {
+        return (this.value ? "Y" : "");
+    }
+
+    @Override
+    protected int getSqlType() {
+        return Types.INTEGER;
     }
 
 }

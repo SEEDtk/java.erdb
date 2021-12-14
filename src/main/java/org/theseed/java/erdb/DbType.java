@@ -5,8 +5,13 @@ package org.theseed.java.erdb;
 
 import java.sql.SQLException;
 
+import org.theseed.java.erdb.types.DbBoolean;
+import org.theseed.java.erdb.types.DbDate;
 import org.theseed.java.erdb.types.DbDouble;
+import org.theseed.java.erdb.types.DbDoubleArray;
 import org.theseed.java.erdb.types.DbInteger;
+import org.theseed.java.erdb.types.DbLocation;
+import org.theseed.java.erdb.types.DbString;
 
 /**
  * This enumeration represents a database field type.
@@ -43,8 +48,7 @@ public enum DbType {
 
         @Override
         public DbValue create() {
-            // TODO code for create
-            return null;
+            return new DbString();
         }
 
         @Override
@@ -56,8 +60,7 @@ public enum DbType {
 
         @Override
         public DbValue create() {
-            // TODO code for create
-            return null;
+            return new DbDoubleArray();
         }
 
         @Override
@@ -69,8 +72,7 @@ public enum DbType {
 
         @Override
         public DbValue create() {
-            // TODO code for create
-            return null;
+            return new DbDate();
         }
 
         @Override
@@ -82,8 +84,7 @@ public enum DbType {
 
         @Override
         public DbValue create() {
-            // TODO code for create
-            return null;
+            return new DbBoolean();
         }
 
         @Override
@@ -95,8 +96,7 @@ public enum DbType {
 
         @Override
         public DbValue create() {
-            // TODO code for create
-            return null;
+            return new DbLocation();
         }
 
         @Override

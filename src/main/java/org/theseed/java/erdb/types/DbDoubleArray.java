@@ -4,13 +4,14 @@
 package org.theseed.java.erdb.types;
 
 import java.nio.ByteBuffer;
-import java.sql.Blob;
+import java.nio.DoubleBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
+import java.util.Arrays;
 
 import org.theseed.java.erdb.DbValue;
-import org.theseed.java.erdb.DoubleInputStream;
 
 /**
  * This object holds a basic floating-point array.  The default is an empty array.
@@ -49,40 +50,82 @@ public class DbDoubleArray extends DbValue {
         return this.value;
     }
 
-    @Override
-    protected void store(PreparedStatement stmt, int idx) throws SQLException {
-        // Get an input stream for the array.
-        DoubleInputStream dataStream = new DoubleInputStream(this.value);
-        // Store it as a blob.
-        stmt.setBlob(idx, dataStream, Double.BYTES * this.value.length);
-    }
-
-    @Override
-    protected void fetch(ResultSet results, int idx) throws SQLException {
-        // Get the blob from the database.
-        Blob blob = results.getBlob(idx);
-        this.value = blobToArray(blob);
+    /**
+     * Convert an array of doubles into a byte array.
+     *
+     * @param val	array of doubles to convert
+     *
+     * @return a byte array containing the content of the double array
+     */
+    protected static byte[] doubleToBytes(double[] val) {
+        // Create a buffer for the array.
+        ByteBuffer bytes = ByteBuffer.allocate(Double.BYTES * val.length);
+        // Store the values in the buffer.
+        Arrays.stream(val).forEach(x -> bytes.putDouble(x));
+        // Return the result as a byte array.
+        return bytes.array();
     }
 
     /**
-     * Convert a blob into an array of doubles.
+     * Convert a byte array into an array of doubles.
      *
-     * @param blob		blob to convert
+     * @param val	byte array to convert
      *
-     * @return an array of doubles built from the blob
-     *
-     * @throws SQLException
+     * @return an array of doubles represented by the byte array
      */
-    protected static double[] blobToArray(Blob blob) throws SQLException {
-        // Allocate a double array of the appropriate length.  Note we toss extra bytes instead of throwing
-        // an error.
-        double[] retVal = new double[(int) (blob.length() / Double.BYTES)];
-        // Get a byte buffer for conversion.
-        ByteBuffer buffer = ByteBuffer.wrap(blob.getBytes(0, retVal.length * Double.BYTES));
-        // Fill the array from the byte buffer.
-        for (int i = 0; i < retVal.length; i++)
-            retVal[i] = buffer.getDouble();
+    protected static double[] bytesToDouble(byte[] val) {
+        // Get the bytes as an array of doubles.
+        DoubleBuffer doubles = ByteBuffer.wrap(val).asDoubleBuffer();
+        // Copy them into a destination array.
+        double[] retVal = new double[doubles.remaining()];
+        doubles.get(retVal);
+        // Return the result.
         return retVal;
+    }
+
+    @Override
+    protected void storeValue(PreparedStatement stmt, int idx) throws SQLException {
+        // Convert the array to a byte buffer.
+        byte[] buffer = doubleToBytes(this.value);
+        // Store it as a blob.
+        stmt.setBytes(idx, buffer);
+    }
+
+    @Override
+    protected void fetchValue(ResultSet results, int idx) throws SQLException {
+        // Get the blob from the database.
+        byte[] blob = results.getBytes(idx);
+        this.value = bytesToDouble(blob);
+    }
+
+    @Override
+    public int getInt() throws SQLException {
+        throw new SQLException("Cannot represent a DOUBLE_ARRAY value as an integer.");
+    }
+
+    @Override
+    public double getDouble() throws SQLException {
+        throw new SQLException("Cannot represent a DOUBLE_ARRAY value as a floating-point.");
+    }
+
+    @Override
+    public String getString() throws SQLException {
+        throw new SQLException("Cannot represent a DOUBLE_ARRAY value as a string.");
+    }
+
+    @Override
+    protected int getSqlType() {
+        return Types.BLOB;
+    }
+
+    /**
+     * Store an array in this value holder.
+     *
+     * @param array		array to store
+     */
+    public void set(double[] array) {
+        this.value = array;
+        this.setNotNull();
     }
 
 }
