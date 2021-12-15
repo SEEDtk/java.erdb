@@ -37,8 +37,11 @@ class TestSqlBuffer {
             buff1.clear();
             assertThat("Buffer should be empty.", buff1.isEmpty());
             assertThat(buff1.toString(), equalTo(""));
+            buff1.append("This is nonsense.");
+            buff1.start("start test");
+            assertThat(buff1.toString(), equalTo("start test"));
             String[] fieldList = new String[] { "TrackId", "Name", "AlbumId", "Composer" };
-            buff1.append("INSERT INTO ").quote("tracks").append(" ").addFields(fieldList);
+            buff1.start("INSERT INTO ").quote("tracks").append(" ").addFields(fieldList);
             buff1.append(" VALUES ").addMarkList(4);
             assertThat(buff1.toString(),
                     equalTo("INSERT INTO [tracks] ([TrackId], [Name], [AlbumId], [Composer])" +

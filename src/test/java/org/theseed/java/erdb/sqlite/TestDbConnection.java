@@ -75,6 +75,15 @@ public class TestDbConnection {
             assertThat("base_count is nullable", ! rnaSampleTable.isNullable("base_count"));
             assertThat(rnaSampleTable.getType("feat_data"), equalTo(DbType.DOUBLE_ARRAY));
             assertThat(rnaSampleTable.getType("suspicious"), equalTo(DbType.BOOLEAN));
+            DbTable.Field pubmed = rnaSampleTable.getField("pubmed");
+            assertThat("pubmed is not nullable", pubmed.isNullable());
+            assertThat(pubmed.getComment(), equalTo("pubmed ID number for the paper relating to this sample (if any)"));
+            DbTable.Field genomeId = rnaSampleTable.getField("genome_id");
+            assertThat(genomeId.getComment(), not(nullValue()));
+            DbTable.Placement placement = rnaSampleTable.getPlacement();
+            assertThat(placement.getRow(), equalTo(3));
+            assertThat(placement.getCol(), equalTo(3));
+            assertThat(placement.getComment(), equalTo("This table contains the data for a single sample.  A sample always belongs to one genome.  The expression data is stored in an array of doubles (BLOB), with missing values stored as NaN.  The Feature table contains the indices for finding individual features in the array.  This limits our query ability, but greatly improves performance."));
             List<String> tables = db.getTableNames();
             assertThat(tables, containsInAnyOrder("FeatureGroup", "Genome", "Feature", "FeatureToGroup", "RnaSample",
                     "SampleCluster", "Measurement"));

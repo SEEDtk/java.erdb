@@ -11,7 +11,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Savepoint;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,6 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.io.LineReader;
+import org.theseed.java.erdb.DbTable.FieldDesc;
 import org.theseed.java.erdb.sqlite.SqliteDbConnection;
 
 /**
@@ -48,19 +48,31 @@ public abstract class DbConnection implements AutoCloseable {
     private DatabaseMetaData metaData;
     /** map of table names to table descriptors */
     private Map<String, DbTable> tableMap;
-    /** special query for custom field types */
+    /** special query for custom field meta-data */
     private PreparedStatement fieldTypeQuery;
+    /** special query for placement data */
+    private PreparedStatement placementQuery;
     /** queries to create field table */
     private static final String[] FIELD_CREATE = new String[] {
             "CREATE TABLE _fields (\n"
-            + "	/* This contains the metadata for each database field with a special type */\n"
+            + "	/* This contains the metadata for each database field with a special type or a comment */\n"
             + "	table_name VARCHAR(30) NOT NULL,\n"
             + "	field_name VARCHAR(30) NOT NULL,\n"
-            + "	field_type VARCHAR(20) NOT NULL /* type name in Java (INTEGER, DOUBLE, etc) */\n"
+            + "	field_type VARCHAR(20) NOT NULL, /* type name in Java (INTEGER, DOUBLE, etc) */\n"
+            + " description TEXT /* important notes about the field */\n"
             + "	);",
             "CREATE UNIQUE INDEX idx__fields ON _fields (table_name, field_name);"
         };
-    /** array to search for fields table */
+    private static final String[] DIAGRAM_CREATE = new String[] {
+            "CREATE TABLE _diagram (\n"
+            + "	/* This contains the metadata for each database table */\n"
+            + "	table_name VARCHAR(30) PRIMARY KEY,\n"
+            + "	rloc INTEGER NOT NULL, /* table's row location on the diagram */\n"
+            + "	cloc INTEGER NOT NULL, /* table's column location on the diagram */\n"
+            + " description TEXT NOT NULL /* description of the table */\n"
+            + "	);"
+        };
+    /** array to search for metadata tables */
     private static final String[] TABLE_SEARCH = new String[] { "TABLE" };
 
     /**
@@ -123,8 +135,6 @@ public abstract class DbConnection implements AutoCloseable {
         private boolean oldCommit;
         /** TRUE if the transaction was successful */
         private boolean committed;
-        /** savepoint for this transaction */
-        private Savepoint start;
 
         /**
          * Create the transaction.
@@ -134,7 +144,6 @@ public abstract class DbConnection implements AutoCloseable {
         public Transaction() throws SQLException {
             this.oldCommit = DbConnection.this.db.getAutoCommit();
             DbConnection.this.db.setAutoCommit(false);
-            this.start = DbConnection.this.db.setSavepoint();
             this.committed = false;
         }
 
@@ -150,7 +159,7 @@ public abstract class DbConnection implements AutoCloseable {
             if (this.committed)
                 DbConnection.this.db.commit();
             else
-                DbConnection.this.db.rollback(this.start);
+                DbConnection.this.db.rollback();
             // Restore the auto-commit status.
             DbConnection.this.db.setAutoCommit(this.oldCommit);
         }
@@ -171,24 +180,32 @@ public abstract class DbConnection implements AutoCloseable {
         // Create the table map.  It is initialized lazily: that is, we store each table
         // definition when the table is first used.
         this.tableMap = new TreeMap<String, DbTable>();
-        // Insure the fields table exists.
-        ResultSet resultSet = this.metaData.getTables(this.getCatalog(), this.getSchema(), "_fields", TABLE_SEARCH);
-        if (! resultSet.next())
-            this.createFieldTable();
-        // Create the field-type query.
+        // Insure the metadata tables exist.  We need a metadata query to get the list of all of them.
+        ResultSet resultSet = this.metaData.getTables(this.getCatalog(), this.getSchema(), null, TABLE_SEARCH);
+        Set<String> allTables = new TreeSet<String>();
+        while (resultSet.next())
+            allTables.add(resultSet.getString("TABLE_NAME"));
+        if (! allTables.contains("_fields"))
+            this.createMetaTable(FIELD_CREATE);
+        if (! allTables.contains("_diagram"))
+            this.createMetaTable(DIAGRAM_CREATE);
+        // Create the metadata queries.
         this.prepareFieldTypeQuery();
+        this.preparePlacementQuery();
     }
 
     /**
-     * Create the field meta-data table.
+     * Create a meta-data table.
+     *
+     * @param sqlArray	array of SQL statements to execute
      *
      * @throws SQLException
      */
-    private void createFieldTable() throws SQLException {
+    private void createMetaTable(String[] sqlArray) throws SQLException {
         boolean oldCommit = db.getAutoCommit();
         try (Statement stmt = db.createStatement()) {
             this.db.setAutoCommit(false);
-            for (String sql : FIELD_CREATE)
+            for (String sql : sqlArray)
                 stmt.execute(sql);
             this.db.commit();
         } finally {
@@ -203,24 +220,51 @@ public abstract class DbConnection implements AutoCloseable {
      */
     private void prepareFieldTypeQuery() throws SQLException {
         this.fieldTypeQuery = this.db.prepareStatement(
-                "SELECT field_name, field_type FROM _fields WHERE table_name = ?");
+                "SELECT field_name, field_type, description FROM _fields WHERE table_name = ?");
     }
 
     /**
-     * @return a map from field names to custom types for the specified table
+     * Create the placement query.
+     *
+     * @throws SQLException
+     */
+    private void preparePlacementQuery() throws SQLException {
+        this.placementQuery = this.db.prepareStatement(
+                "SELECT rloc, cloc, description FROM _diagram WHERE table_name = ?");
+    }
+
+    /**
+     * Get the placement metadata for a table.
+     *
+     * @param table		name of the desired table
+     *
+     * @return a result set for the query to get this table's placement metadata
+     *
+     * @throws SQLException
+     */
+    protected ResultSet loadPlacementRecord(String table) throws SQLException {
+        this.placementQuery.setString(1, table);
+        ResultSet retVal = this.placementQuery.executeQuery();
+        return retVal;
+    }
+
+
+    /**
+     * @return a map from field names to custom field information for the specified table
      *
      * @param table		name of the table whose custom-type fields are desired
      *
      * @throws SQLException
      */
-    protected Map<String, DbType> getCustomTypes(String table) throws SQLException {
-        Map<String, DbType> retVal = new TreeMap<String, DbType>();
+    protected Map<String, DbTable.FieldDesc> getCustomTypes(String table) throws SQLException {
+        var retVal = new TreeMap<String, FieldDesc>();
         this.fieldTypeQuery.setString(1, table);
         ResultSet results = this.fieldTypeQuery.executeQuery();
         while (results.next()) {
             String fieldName = results.getString("field_name");
             DbType fieldType = DbType.parse(results.getString("field_type"));
-            retVal.put(fieldName, fieldType);
+            String comment = results.getString("description");
+            retVal.put(fieldName, new DbTable.FieldDesc(fieldType, comment));
         }
         return retVal;
     }
@@ -335,13 +379,14 @@ public abstract class DbConnection implements AutoCloseable {
                 if (table == null)
                     throw new SQLException("Cannot drop all tables: circular references found.");
                 // Here it is safe to drop.
-                buffer.append("DROP TABLE ").quote(table);
+                buffer.start("DROP TABLE ").quote(table);
                 unDropped.remove(table);
                 stmt.execute(buffer.toString());
-                buffer.clear();
             }
-            // Empty the fields meta-table.
-            buffer.append("DELETE FROM ").quote("_fields");
+            // Empty the meta-tables.
+            buffer.start("DELETE FROM ").quote("_fields");
+            stmt.execute(buffer.toString());
+            buffer.start("DELETE FROM ").quote("_diagram");
             stmt.execute(buffer.toString());
             // Commit the updates.
             this.db.commit();

@@ -206,6 +206,18 @@ public class SqlBuffer {
         return this;
     }
 
+    /**
+     * Start a new SQL statement in this buffer.
+     *
+     * @param string	initial string to put into the buffer
+     *
+     * @return this object, for fluent invocation
+     */
+    public SqlBuffer start(String string) {
+        this.clear();
+        return this.append(string);
+    }
+
 
 
 }

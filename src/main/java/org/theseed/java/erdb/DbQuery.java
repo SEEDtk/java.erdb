@@ -232,6 +232,11 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         }
     }
 
+    /**
+     * This is the iterator through the results of the query.  Creating it starts the query.
+     *
+     * @author Bruce Parrello
+     */
     public class Iter implements Iterator<DbRecord> {
 
         /** result set for the query */
@@ -248,7 +253,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
 
         @Override
         public boolean hasNext() {
-            if (this.nextRecord == null)
+            if (this.nextRecord == null && this.results != null)
                 this.getNextRecord();
             return (this.nextRecord != null);
         }
@@ -256,7 +261,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         @Override
         public DbRecord next() {
             DbRecord retVal = null;
-            if (this.nextRecord == null)
+            if (this.nextRecord == null && this.results != null)
                 this.getNextRecord();
             if (this.nextRecord == null)
                 throw new NoSuchElementException("Attempt to read past end of query.");
@@ -276,9 +281,24 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
                     // Here we have another record to return.
                     this.nextRecord = new DbRecord(this.results, DbQuery.this.fieldNames,
                             DbQuery.this.fieldTypes);
+                } else {
+                    this.results.close();
+                    this.results = null;
                 }
             } catch (SQLException e) {
                 throw new RuntimeException(e);
+            }
+        }
+
+        /**
+         * Close the current result set.
+         *
+         * @throws SQLException
+         */
+        public void close() throws SQLException {
+            if (this.results != null) {
+                this.results.close();
+                this.results = null;
             }
         }
 

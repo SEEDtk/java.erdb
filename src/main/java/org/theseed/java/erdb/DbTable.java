@@ -36,6 +36,54 @@ public class DbTable {
     private String keyName;
 
     /**
+     * This object encapsulates the diagramming info for the table.
+     */
+    public class Placement {
+
+        /** row placement */
+        private int row;
+        /** column placement */
+        private int col;
+        /** table description */
+        private String comment;
+
+        /**
+         * Construct this object from a query against the diagram table.
+         *
+         * @param result	result set positioned on this table
+         *
+         * @throws SQLException
+         */
+        private Placement(ResultSet result) throws SQLException {
+            this.row = result.getInt("rloc");
+            this.col = result.getInt("cloc");
+            this.comment = result.getString("description");
+        }
+
+        /**
+         * @return the row position
+         */
+        public int getRow() {
+            return this.row;
+        }
+
+        /**
+         * @return the column position
+         */
+        public int getCol() {
+            return this.col;
+        }
+
+        /**
+         * @return the table description
+         */
+        public String getComment() {
+            return this.comment;
+        }
+
+    }
+
+    /**
      * This object describes a link between two tables.  It contains the field name in this table and
      * the field name in the target table.
      */
@@ -70,6 +118,32 @@ public class DbTable {
     }
 
     /**
+     * This object represents custom field data.
+     */
+    protected static class FieldDesc {
+
+        /** type of field */
+        protected DbType type;
+        /** comment about the field for the diagram */
+        protected String comment;
+
+        /**
+         * Construct a custom field data descriptor.
+         *
+         * @param fieldType		type of field
+         * @param desc			descriptive comment about the field
+         */
+        public FieldDesc(DbType fieldType, String desc) {
+            this.type = fieldType;
+            if (desc == null)
+                this.comment = "";
+            else
+                this.comment = desc;
+        }
+
+    }
+
+    /**
      * This object describes a field in a table.
      */
     public class Field {
@@ -80,6 +154,8 @@ public class DbTable {
         private DbType type;
         /** TRUE if the field is nullable */
         private boolean nullable;
+        /** comment relating to this field */
+        private String comment;
 
         /**
          * Construct a specific field descriptor.
@@ -92,23 +168,29 @@ public class DbTable {
             this.name = name;
             this.type = type;
             this.nullable = nullable;
+            this.comment = "";
         }
 
         /**
          * Construct a field descriptor from a metadata result.
          *
-         * @param db		parent database
-         * @param result	result set positioned on the field
-         * @param customTypes
+         * @param db			parent database
+         * @param result		result set positioned on the field
+         * @param customTypes	map of field names to custom types
          */
-        protected Field(ResultSet result, Map<String, DbType> customTypes) {
+        protected Field(ResultSet result, Map<String, FieldDesc> customTypes) {
             try {
                 DbConnection db = DbTable.this.db;
                 this.name = result.getString("COLUMN_NAME");
                 // Check for a custom type.  If none is found, compute the real type.
-                this.type = customTypes.get(this.name);
-                if (this.type == null)
+                FieldDesc desc = customTypes.get(this.name);
+                if (desc == null) {
                     this.type = DbType.parse(db, result.getString("TYPE_NAME"));
+                    this.comment = "";
+                } else {
+                    this.type = desc.type;
+                    this.comment = desc.comment;
+                }
                 // Get the nullability flag.
                 this.nullable = (result.getInt("NULLABLE") == DatabaseMetaData.columnNullable);
             } catch (SQLException e) {
@@ -146,6 +228,13 @@ public class DbTable {
             buffer.quote(DbTable.this.name, this.name);
         }
 
+        /**
+         * @return the field's descriptive comment
+         */
+        public String getComment() {
+            return comment;
+        }
+
     }
 
     /**
@@ -165,7 +254,7 @@ public class DbTable {
         // Get the metadata.
         DatabaseMetaData meta = db.getMetaData();
         // Read the custom-type fields from the meta-table.
-        Map<String, DbType> customTypes = db.getCustomTypes(name);
+        Map<String, FieldDesc> customTypes = db.getCustomTypes(name);
         // Read the table columns.
         ResultSet results = meta.getColumns(catalog, schema, name, null);
         // Create the DbTable object.  We may need to throw it away later.
@@ -216,7 +305,7 @@ public class DbTable {
     }
 
     /**
-     * Store a link to another table.
+     * Store the metadata for a link to another table.
      *
      * @param results			result set positioned on the current link
      *
@@ -307,5 +396,20 @@ public class DbTable {
             throw new SQLException("No field \"" + field + "\" found in " + this.name);
         return retVal;
     }
+
+    /**
+     * @return the placement data for this table, or NULL if there is none
+     *
+     * @throws SQLException
+     */
+    public Placement getPlacement() throws SQLException {
+        ResultSet result = this.db.loadPlacementRecord(this.name);
+        Placement retVal = null;
+        if (result.next())
+            retVal = this.new Placement(result);
+        result.close();
+        return retVal;
+    }
+
 
 }

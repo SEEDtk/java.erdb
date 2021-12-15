@@ -150,6 +150,15 @@ public enum DbType {
         case "LOCATION" :
             retVal = LOCATION;
             break;
+        case "INTEGER" :
+            retVal = INTEGER;
+            break;
+        case "DOUBLE" :
+            retVal = DOUBLE;
+            break;
+        case "STRING" :
+            retVal = STRING;
+            break;
         default:
             throw new SQLException("Invalid custom type \"" + string + "\".");
         }
