@@ -6,11 +6,13 @@ package org.theseed.java.erdb;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.java.erdb.types.DbBoolean;
 import org.theseed.java.erdb.types.DbDate;
 import org.theseed.java.erdb.types.DbDouble;
 import org.theseed.java.erdb.types.DbDoubleArray;
@@ -195,6 +197,19 @@ public class DbLoader implements AutoCloseable {
     }
 
     /**
+     * Store a local date in the value holder for the specified field.
+     *
+     * @param field		name of the field
+     * @param date		date to store
+     *
+     * @throws SQLException
+     */
+    public void set(String field, LocalDate date) throws SQLException {
+        DbDate dateHolder = (DbDate) this.getField(field, DbDate.class);
+        dateHolder.set(date);
+    }
+
+    /**
      * Store a double array in the value holder for the specified field.
      *
      * @param field		name of the field
@@ -230,6 +245,19 @@ public class DbLoader implements AutoCloseable {
     public void setNull(String field) throws SQLException {
         DbValue nullHolder = this.getField(field, DbValue.class);
         nullHolder.setNull();
+    }
+
+    /**
+     * Store a boolean value in the value holder for the specified field.
+     *
+     * @param field		name of the field
+     * @param b			boolean value to store
+     *
+     * @throws SQLException
+     */
+    public void set(String field, boolean b) throws SQLException {
+        DbBoolean boolHolder = (DbBoolean) this.getField(field, DbBoolean.class);
+        boolHolder.set(b);
     }
 
 }

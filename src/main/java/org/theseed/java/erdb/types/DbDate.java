@@ -8,6 +8,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 
 import org.theseed.java.erdb.DbValue;
 
@@ -93,4 +95,37 @@ public class DbDate extends DbValue {
         this.setNotNull();
     }
 
+    /**
+     * Store a local date in this value holder.
+     *
+     * @param date		local date to store
+     */
+    public void set(LocalDate date) {
+        Instant instant = instantOf(date);
+        // Store it in this object.
+        this.value = instant;
+        this.setNotNull();
+    }
+
+    /**
+     * @return the instant corresponding to the specified local date
+     *
+     * @param date	local date to convert
+     */
+    public static Instant instantOf(LocalDate date) {
+        // Convert the local date to an instant.
+        Instant instant = date.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return instant;
+    }
+
+    /**
+     * @return the instant corresponding to the specified year, month, and day
+     *
+     * @param year		year of the instant
+     * @param month		month within the year
+     * @param day		day within the month
+     */
+    public static Instant instantOf(int year, int month, int day) {
+        return instantOf(LocalDate.of(year, month, day));
+    }
 }

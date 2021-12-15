@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -43,10 +44,15 @@ import org.theseed.locations.Location;
  * is the field name.
  *
  * The path through the database is specified using delimited table names.  A delimiter of "<" indicates
- * a left join, while a space indicates a normal join.  Extra spaces around the delimiters are ignored.
- * If a table is used more than once, the additional uses should be name unique by added a number at
- * the end.  Table names themselves cannot end in digits, so all digits at the end are considered part
- * of the distinguishing number.  The name/number combination is used as an alias for the table.
+ * a left join, a space indicates a normal join, and an "&" indicates a join to a previous table.
+ * Extra spaces around the delimiters are ignored. If a table is used more than once, the additional uses
+ * should be name unique by added a number at the end.  Table names themselves cannot end in digits,
+ * so all digits at the end are considered part of the distinguishing number.  The name/number combination
+ * is used as an alias for the table.
+ *
+ * When using an ampersand (&), the table after the ampersand is not joined with the previous.  Rather, the
+ * next table is reset as the starting point of the join after that.  This enables very complex query
+ * paths.
  *
  * This query can be used multiple times with different parameters.  The parameters are assigned an index
  * (starting from 1) in the order that they are created.  Use the "set" methods to update the parameters.
@@ -83,12 +89,11 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
     /** map of delimiters to join types */
     private static final Map<String, String> JOIN_TYPES = Map.of(
             "", " INNER JOIN",
-            "<", " LEFT OUTER JOIN",
-            ">", " RIGHT OUTER JOIN");
+            "<", " LEFT OUTER JOIN");
     /** pattern for finding the first table in the table path */
     private static final Pattern FIRST_TABLE = Pattern.compile("[^\\s<>]+");
     /** pattern for parsing the joined tables in the table path */
-    private static final Pattern JOINED_TABLE = Pattern.compile("(\\s+|\\s*[<>]\\s*)([^\\s<>]+)");
+    private static final Pattern JOINED_TABLE = Pattern.compile("(\\s+|\\s*[<&]\\s*)([^\\s<&]+)");
 
     /**
      * Construct a database query.
@@ -153,15 +158,21 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
             String delim = StringUtils.trim(m.group(1));
             String newTable = m.group(2);
             DbTable newDescriptor = this.findTable(newTable);
-            // Store the join connector in the FROM clause and put in the target table.
-            this.fromClause.append(JOIN_TYPES.get(delim));
-            this.addTable(newTable, newDescriptor);
-            // Get the WHERE sub-clause from the descriptor.  Note we use "getName" to get the
-            // real table name.
-            DbTable.Link joinLink = oldDescriptor.getLink(newDescriptor.getName());
-            if (joinLink == null)
-                throw new SQLException("No path from " + oldTable + " to " + newTable + ".");
-            joinLink.store(this.fromClause.append(" ON "), oldTable, newTable);
+            // Check for the special ampersand case.
+            if (! delim.contentEquals("&")) {
+                // Store the join connector in the FROM clause and put in the target table.
+                this.fromClause.append(JOIN_TYPES.get(delim));
+                this.addTable(newTable, newDescriptor);
+                // Get the WHERE sub-clause from the descriptor.  Note we use "getName" to get the
+                // real table name.
+                DbTable.Link joinLink = oldDescriptor.getLink(newDescriptor.getName());
+                if (joinLink == null)
+                    throw new SQLException("No path from " + oldTable + " to " + newTable + ".");
+                joinLink.store(this.fromClause.append(" ON "), oldTable, newTable);
+            }
+            // Set up for the next join.
+            oldTable = newTable;
+            oldDescriptor = newDescriptor;
         }
     }
 
@@ -533,10 +544,33 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
      */
     public DbQuery in(String field, int count) throws SQLException {
         // Create the holders.
-        this.addHolders(field, 2);
+        this.addHolders(field, count);
         // Update the WHERE clause.
         this.whereClause.appendDelim(" AND ").quoteSpec(field).append(" IN ").addMarkList(count);
         return this;
+    }
+
+    /**
+     * Add an IS NULL or IS NOT NULL filter to the query.  This filter does not
+     * add parameter marks.
+     *
+     * @param field		field spec (table.field) for the field being filtered
+     * @param flag		TRUE for is-null, FALSE for is-not-null
+     *
+     * @return this object, for fluent invocation
+     *
+     * @throws SQLException
+     */
+    public DbQuery isNull(String field, boolean flag) throws SQLException {
+        DbTable.Field fieldDescriptor = this.findComparableField(field);
+        if (! fieldDescriptor.isNullable())
+            throw new SQLException("Field " + field + " is not nullable.");
+        this.whereClause.appendDelim(" AND ").quoteSpec(field).append(" IS");
+        if (! flag)
+            this.whereClause.append(" NOT");
+        this.whereClause.append(" NULL");
+        return this;
+
     }
 
     /**
@@ -593,6 +627,16 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         return this;
     }
 
+    /**
+     * Store floating-point values in the parameter list.
+     *
+     * @param idx		index (1-based) of the first parameter to store
+     * @param values	floating-point values to store
+     *
+     * @return this object, for fluent invocation
+     *
+     * @throws SQLException
+     */
     public DbQuery setParm(int idx, double... values) throws SQLException {
         this.validateParmSet(idx, values.length);
         // Position on the indicated first parameter holder.
@@ -606,6 +650,16 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         return this;
     }
 
+    /**
+     * Store string values in the parameter list.
+     *
+     * @param idx		index (1-based) of the first parameter to store
+     * @param values	string values to store
+     *
+     * @return this object, for fluent invocation
+     *
+     * @throws SQLException
+     */
     public DbQuery setParm(int idx, String... values) throws SQLException {
         this.validateParmSet(idx, values.length);
         // Position on the indicated first parameter holder.
@@ -619,6 +673,16 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         return this;
     }
 
+    /**
+     * Store location values in the parameter list.
+     *
+     * @param idx		index (1-based) of the first parameter to store
+     * @param values	location values to store
+     *
+     * @return this object, for fluent invocation
+     *
+     * @throws SQLException
+     */
     public DbQuery setParm(int idx, Location... values) throws SQLException {
         this.validateParmSet(idx, values.length);
         // Position on the indicated first parameter holder.
@@ -632,12 +696,45 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         return this;
     }
 
+    /**
+     * Store date/time values in the parameter list.
+     *
+     * @param idx		index (1-based) of the first parameter to store
+     * @param values	date/time values to store
+     *
+     * @return this object, for fluent invocation
+     *
+     * @throws SQLException
+     */
     public DbQuery setParm(int idx, Instant... values) throws SQLException {
         this.validateParmSet(idx, values.length);
         // Position on the indicated first parameter holder.
         int i = idx;
         // Fill in the slots.
         for (Instant value : values) {
+            DbDate dateHolder = (DbDate) this.getParm(i, DbDate.class);
+            dateHolder.set(value);
+            i++;
+        }
+        return this;
+    }
+
+    /**
+     * Store local date values in the parameter list.
+     *
+     * @param idx		index (1-based) of the first parameter to store
+     * @param values	local date values to store
+     *
+     * @return this object, for fluent invocation
+     *
+     * @throws SQLException
+     */
+    public DbQuery setParm(int idx, LocalDate... values) throws SQLException {
+        this.validateParmSet(idx, values.length);
+        // Position on the indicated first parameter holder.
+        int i = idx;
+        // Fill in the slots.
+        for (LocalDate value : values) {
             DbDate dateHolder = (DbDate) this.getParm(i, DbDate.class);
             dateHolder.set(value);
             i++;

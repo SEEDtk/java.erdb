@@ -76,4 +76,13 @@ public class DbBoolean extends DbValue {
         return Types.INTEGER;
     }
 
+    /**
+     * Store a boolean value in this holder.
+     *
+     * @param b		value to store
+     */
+    public void set(boolean b) {
+        this.value = b;
+    }
+
 }
