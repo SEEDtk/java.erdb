@@ -408,6 +408,8 @@ public abstract class DbConnection implements AutoCloseable {
         // Clean up the special statements.
         if (this.fieldTypeQuery != null)
             this.fieldTypeQuery.close();
+        if (this.placementQuery != null)
+            this.placementQuery.close();
         // Close the database.
         this.db.close();
         log.info("Closed database {}.", this.getName());
@@ -461,12 +463,13 @@ public abstract class DbConnection implements AutoCloseable {
      * @throws SQLException
      */
     public DbTable getTable(String tName) throws SQLException {
-        DbTable retVal = this.tableMap.get(tName);
+        String lc_tName = tName.toLowerCase();
+        DbTable retVal = this.tableMap.get(lc_tName);
         if (retVal == null) {
             retVal = DbTable.load(this, tName);
             // If the table exists, cache it in the table map.
             if (retVal != null)
-                this.tableMap.put(tName, retVal);
+                this.tableMap.put(lc_tName, retVal);
         }
         return retVal;
     }

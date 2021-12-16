@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import org.slf4j.Logger;
@@ -115,6 +116,21 @@ public class DbTable {
         public void store(SqlBuffer buffer, String source, String target) {
             buffer.quote(source, this.localField).append(" = ").quote(target, this.otherField);
         }
+
+        /**
+         * @return the name of the link field in our table
+         */
+        public String getLocalField() {
+            return this.localField;
+        }
+
+        /**
+         * @return the the name of the link field in the other table
+         */
+        public String getOtherField() {
+            return this.otherField;
+        }
+
     }
 
     /**
@@ -365,6 +381,13 @@ public class DbTable {
      */
     public Collection<Field> getFields() {
         return this.fields.values();
+    }
+
+    /**
+     * @return a list of the links for this table
+     */
+    public Set<Map.Entry<String, Link>> getLinks() {
+        return this.links.entrySet();
     }
 
     /**
