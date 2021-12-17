@@ -10,7 +10,9 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -241,6 +243,13 @@ public class CommonTesters {
         // Now try some existence checks.
         assertThat("sample1 not found", db.checkForRecord("RnaSample", "sample1"));
         assertThat("sample6 found", ! db.checkForRecord("RnaSample", "sample6"));
+        // Delete some samples.
+        List<String> samples = Arrays.asList("sample1", "sample3", "sample5");
+        db.deleteRecords("RnaSample", samples);
+        assertThat("wrong sample deleted", db.checkForRecord("RnaSample", "sample2"));
+        assertThat("delete failed", ! db.checkForRecord("RnaSample", "sample1"));
+        assertThat("delete failed", ! db.checkForRecord("RnaSample", "sample3"));
+        assertThat("delete failed", ! db.checkForRecord("RnaSample", "sample5"));
         // Delete the genome.
         db.deleteRecord("Genome", "511145.183");
         // Verify the genome is gone, along with all the features and samples.

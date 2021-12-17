@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -54,6 +55,8 @@ public abstract class DbConnection implements AutoCloseable {
     private PreparedStatement fieldTypeQuery;
     /** special query for placement data */
     private PreparedStatement placementQuery;
+    /** batch size for mass deletes */
+    private static final int DELETE_BATCH_SIZE = 100;
     /** queries to create field table */
     private static final String[] FIELD_CREATE = new String[] {
             "CREATE TABLE _fields (\n"
@@ -363,13 +366,7 @@ public abstract class DbConnection implements AutoCloseable {
      * @throws SQLException
      */
     private void deleteRecord(String table, DbValue valueObject) throws SQLException {
-        SqlBuffer buffer = new SqlBuffer(this);
-        DbTable tableDesc = this.getTable(table);
-        String keyName = tableDesc.getKeyName();
-        if (keyName == null)
-            throw new SQLException("Cannot do delete-record on table " + table + ", which has no primary key.");
-        // Build the query.
-        buffer.append("DELETE FROM ").quote(table).append(" WHERE ").quote(keyName).append(" = ").appendMark();
+        SqlBuffer buffer = buildDeleteStmt(table);
         try (PreparedStatement stmt = this.createStatement(buffer)) {
             // Store the key value in the query and execute it.
             valueObject.store(stmt, 1);
@@ -377,6 +374,25 @@ public abstract class DbConnection implements AutoCloseable {
         }
     }
 
+    /**
+     * Build a delete statement for the specified table.
+     *
+     * @param table		table of interest
+     *
+     * @return an SQL buffer containing a primary-key delete statement for the specified table
+     *
+     * @throws SQLException
+     */
+    public SqlBuffer buildDeleteStmt(String table) throws SQLException {
+        SqlBuffer retVal = new SqlBuffer(this);
+        DbTable tableDesc = this.getTable(table);
+        String keyName = tableDesc.getKeyName();
+        if (keyName == null)
+            throw new SQLException("Cannot do delete-record on table " + table + ", which has no primary key.");
+        // Build the query.
+        retVal.append("DELETE FROM ").quote(table).append(" WHERE ").quote(keyName).append(" = ").appendMark();
+        return retVal;
+    }
 
     /**
      * @return a map from field names to custom field information for the specified table
@@ -613,6 +629,35 @@ public abstract class DbConnection implements AutoCloseable {
     public PreparedStatement createStatement(SqlBuffer buffer) throws SQLException {
         PreparedStatement retVal = this.db.prepareStatement(buffer.toString());
         return retVal;
+    }
+
+    /**
+     * Delete a set of identified records from the specified table.  This method batches the
+     * queries rather than doing individual delete calls.
+     *
+     * @param table		name of the target table
+     * @param keys		keys of the records to delete
+     *
+     * @throws SQLException
+     */
+    public void deleteRecords(String table, Collection<String> keys) throws SQLException {
+        // Prepare a statement to do the deletes.
+        SqlBuffer buffer = this.buildDeleteStmt(table);
+        try (PreparedStatement stmt = this.createStatement(buffer)) {
+            // Count the number of statements for batching purposes.
+            int count = 0;
+            for (String key : keys) {
+                if (count >= DELETE_BATCH_SIZE) {
+                    stmt.executeBatch();
+                    count = 0;
+                }
+                stmt.setString(1, key);
+                stmt.addBatch();
+                count++;
+            }
+            if (count > 0)
+                stmt.executeBatch();
+        }
     }
 
 
