@@ -61,7 +61,7 @@ import org.theseed.locations.Location;
  * @author Bruce Parrello
  *
  */
-public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
+public class DbQuery implements AutoCloseable {
 
     // FIELDS
     /** logging facility */

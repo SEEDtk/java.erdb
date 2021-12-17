@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import org.theseed.io.LineReader;
 import org.theseed.java.erdb.DbTable.FieldDesc;
 import org.theseed.java.erdb.sqlite.SqliteDbConnection;
+import org.theseed.java.erdb.types.DbInteger;
+import org.theseed.java.erdb.types.DbString;
 
 /**
  * This object manages an SQLite database connection.  It contains methods for passing in raw update
@@ -78,9 +80,6 @@ public abstract class DbConnection implements AutoCloseable {
     /**
      * This interface is used by the individual database connection services to get the database
      * connection information.
-     *
-     * @author Bruce Parrello
-     *
      */
     public interface IParms {
 
@@ -158,8 +157,10 @@ public abstract class DbConnection implements AutoCloseable {
         public void close() throws SQLException {
             if (this.committed)
                 DbConnection.this.db.commit();
-            else
+            else {
+                log.info("Rolling back transaction in database {}.", DbConnection.this.getName());
                 DbConnection.this.db.rollback();
+            }
             // Restore the auto-commit status.
             DbConnection.this.db.setAutoCommit(this.oldCommit);
         }
@@ -246,6 +247,134 @@ public abstract class DbConnection implements AutoCloseable {
         this.placementQuery.setString(1, table);
         ResultSet retVal = this.placementQuery.executeQuery();
         return retVal;
+    }
+
+    /**
+     * @return TRUE if the specified record exists, else FALSE
+     *
+     * @param	table	table containing the record to check
+     * @param	value	value of the desired record's primary key
+     *
+     * @throws SQLException
+     */
+    public boolean checkForRecord(String table, String value) throws SQLException {
+        DbValue valueObject = new DbString(value);
+        return this.checkForRecord(table, valueObject);
+    }
+
+    /**
+     * @return TRUE if the specified record exists, else FALSE
+     *
+     * @param	table	table containing the record to check
+     * @param	value	value of the desired record's primary key
+     *
+     * @throws SQLException
+     */
+    public boolean checkForRecord(String table, int value) throws SQLException {
+        DbValue valueObject = new DbInteger(value);
+        return this.checkForRecord(table, valueObject);
+    }
+
+    /**
+     * @return the set of primary keys for the specified table
+     *
+     * @param table			table whose key set is desired
+     *
+     * @throws SQLException
+     */
+    public Set<String> getKeys(String table) throws SQLException {
+        Set<String> retVal = new HashSet<String>();
+        // Get the key information from the table and build the query.
+        SqlBuffer buffer = new SqlBuffer(this);
+        DbTable tableDesc = this.getTable(table);
+        String keyName = tableDesc.getKeyName();
+        if (keyName == null)
+            throw new SQLException("Cannot do check-for-record on table " + table + ", which has no primary key.");
+        buffer.append("SELECT ").quote(keyName).append(" FROM ").quote(table);
+        try (Statement stmt = this.db.createStatement()) {
+            ResultSet results = stmt.executeQuery(buffer.toString());
+            // Loop through the results, building the set.
+            while (results.next())
+                retVal.add(results.getString(1));
+        }
+        return retVal;
+    }
+
+    /**
+     * @return TRUE if the specified record exists, else FALSE
+     *
+     * @param table			table containing the record to check
+     * @param valueObject	value of the desired record's primary key
+     *
+     * @throws SQLException
+     */
+    private boolean checkForRecord(String table, DbValue valueObject) throws SQLException {
+        boolean retVal = false;
+        SqlBuffer buffer = new SqlBuffer(this);
+        DbTable tableDesc = this.getTable(table);
+        String keyName = tableDesc.getKeyName();
+        if (keyName == null)
+            throw new SQLException("Cannot do check-for-record on table " + table + ", which has no primary key.");
+        // Build the query.
+        buffer.append("SELECT ").quote(keyName).append(" FROM ").quote(table).append(" WHERE ")
+                .quote(keyName).append(" = ").appendMark();
+        try (PreparedStatement stmt = this.createStatement(buffer)) {
+            // Store the key value in the query and execute it.
+            valueObject.store(stmt, 1);
+            ResultSet results = stmt.executeQuery();
+            retVal = results.next();
+        }
+        // Return the result.  If a record was found, this will be TRUE.
+        return retVal;
+    }
+
+    /**
+     * Delete the specified record from the database.
+     *
+     * @param	table	table containing the record to delete
+     * @param	value	value of the desired record's primary key
+     *
+     * @throws SQLException
+     */
+    public void deleteRecord(String table, String value) throws SQLException {
+        DbValue valueObject = new DbString(value);
+        this.deleteRecord(table, valueObject);
+    }
+
+    /**
+     * Delete the specified record from the database.
+     *
+     * @param	table	table containing the record to delete
+     * @param	value	value of the desired record's primary key
+     *
+     * @throws SQLException
+     */
+    public void deleteRecord(String table, int value) throws SQLException {
+        DbValue valueObject = new DbInteger(value);
+        this.deleteRecord(table, valueObject);
+    }
+
+    /**
+     * Delete the specified record
+     *
+     * @param table			table containing the record to delete
+     * @param valueObject	value of the desired record's primary key
+     *
+     * @throws SQLException
+     */
+    private void deleteRecord(String table, DbValue valueObject) throws SQLException {
+        SqlBuffer buffer = new SqlBuffer(this);
+        DbTable tableDesc = this.getTable(table);
+        String keyName = tableDesc.getKeyName();
+        if (keyName == null)
+            throw new SQLException("Cannot do delete-record on table " + table + ", which has no primary key.");
+        // Build the query.
+        buffer.append("DELETE FROM ").quote(table).append(" WHERE ").quote(keyName).append(" = ").appendMark();
+        try (PreparedStatement stmt = this.createStatement(buffer)) {
+            // Store the key value in the query and execute it.
+            valueObject.store(stmt, 1);
+            stmt.execute();
+        }
     }
 
 
@@ -418,7 +547,7 @@ public abstract class DbConnection implements AutoCloseable {
     /**
      * @return the name of this database
      */
-    protected abstract String getName();
+    public abstract String getName();
 
 
     /**

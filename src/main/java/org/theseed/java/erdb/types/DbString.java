@@ -75,7 +75,10 @@ public class DbString extends DbValue {
      */
     public void set(String val) {
         this.value = val;
-        this.setNotNull();
+        if (value == null)
+            this.setNull();
+        else
+            this.setNotNull();
     }
 
     @Override

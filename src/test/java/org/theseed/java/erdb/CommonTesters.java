@@ -12,9 +12,11 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.erdb.utils.MapCollector;
+import org.theseed.erdb.utils.DbCollectors;
 import org.theseed.java.erdb.types.DbDate;
 import org.theseed.java.erdb.types.DbLocation;
 import org.theseed.locations.Location;
@@ -28,19 +30,10 @@ import org.theseed.locations.Location;
  */
 public class CommonTesters {
 
-    /**
-     *
-     */
     private static final String GENOME_NAME = "Escherichia coli K-12 MG1655 test genome";
 
-    /**
-     *
-     */
     private static final double[] ARRAY_SAMPLE5 = new double[] { -4.6, 1.0, 2.0, 3.0, 4.0, 6.0 };
 
-    /**
-     *
-     */
     private static final double[] ARRAY_SAMPLE3 = new double[] { 0.0, -4.7, 2.0, 3.0, 4.0, 5.0 };
 
     /** logging facility */
@@ -63,12 +56,12 @@ public class CommonTesters {
         assertThat(rnaSampleTable, nullValue());
         db.scriptUpdate(new File("data", "rnaseqdb.sql"));
         try (DbConnection.Transaction xact = db.new Transaction()) {
-            try (DbLoader loader = new DbLoader(db, "Genome")) {
+            try (DbLoader loader = DbLoader.batch(db, "Genome")) {
                 loader.set("genome_id", "511145.183");
                 loader.set("genome_name", GENOME_NAME);
                 loader.insert();
             }
-            try (DbLoader loader = new DbLoader(db, "Feature")) {
+            try (DbLoader loader = DbLoader.batch(db, "Feature")) {
                 loader.set("fig_id", "fig|511145.183.peg.1");
                 loader.set("genome_id", "511145.183");
                 loader.setNull("alias");
@@ -85,7 +78,7 @@ public class CommonTesters {
                 loader.set("location", locPeg2);
                 loader.insert();
             }
-            try (DbLoader loader = new DbLoader(db, "SampleCluster")) {
+            try (DbLoader loader = DbLoader.batch(db, "SampleCluster")) {
                 loader.set("cluster_id", "CL1");
                 loader.set("height", 6);
                 loader.set("score", 90.1);
@@ -97,7 +90,7 @@ public class CommonTesters {
                 loader.set("numSamples", 4);
                 loader.insert();
             }
-            try (DbLoader loader = new DbLoader(db, "RnaSample")) {
+            try (DbLoader loader = DbLoader.batch(db, "RnaSample")) {
                 loader.set("sample_id", "sample1");
                 loader.set("genome_id", "511145.183");
                 loader.set("process_date", LocalDate.of(2000, 10, 20));
@@ -167,6 +160,8 @@ public class CommonTesters {
             xact.commit();
         }
         // Now we have set up a genome, two features, and 4 samples.  Verify by reading them back.
+        Set<String> allSamples = db.getKeys("RnaSample");
+        assertThat(allSamples, containsInAnyOrder("sample1", "sample2", "sample3", "sample4", "sample5"));
         try (DbQuery query = new DbQuery(db, "Genome1 Feature2")) {
             query.rel("Genome1.genome_id", Relop.EQ).orderBy("Feature2.seq_no");
             query.select("Genome1", "genome_id", "genome_name");
@@ -207,7 +202,7 @@ public class CommonTesters {
             query.select("SampleCluster", "height", "score");
             query.setParm(1, LocalDate.of(2000, 12, 10), LocalDate.of(2003, 1, 1));
             Map<String, DbRecord> results =
-                    query.stream().parallel().collect(MapCollector.collect("RnaSample.sample_id"));
+                    query.stream().parallel().collect(DbCollectors.map("RnaSample.sample_id"));
             assertThat(results.size(), equalTo(2));
             DbRecord sample3 = results.get("sample3");
             assertThat(sample3.getString("RnaSample.sample_id"), equalTo("sample3"));
@@ -220,7 +215,7 @@ public class CommonTesters {
             assertThat(sample3.getInt("SampleCluster.height"), equalTo(5));
             assertThat(sample3.getDouble("SampleCluster.score"), equalTo(80.2));
             query.setParm(1, DbDate.instantOf(2001, 1, 1), DbDate.instantOf(2004, 1, 1));
-            results = query.stream().parallel().collect(MapCollector.collect("RnaSample.sample_id"));
+            results = query.stream().parallel().collect(DbCollectors.map("RnaSample.sample_id"));
             assertThat(results.size(), equalTo(3));
             DbRecord sample5 = results.get("sample5");
             assertThat(sample5.getString("RnaSample.sample_id"), equalTo("sample5"));
@@ -236,13 +231,23 @@ public class CommonTesters {
             query.select("RnaSample", "sample_id");
             query.selectAll("SampleCluster");
             query.setParm(1, "sample1", "sample2", "sample3", "sample5");
-            Map<String, DbRecord> results = query.stream().collect(MapCollector.collect("RnaSample.sample_id"));
+            Map<String, DbRecord> results = query.stream().collect(DbCollectors.map("RnaSample.sample_id"));
             assertThat(results.get("sample4"), nullValue());
             assertThat(results.get("sample1"), nullValue());
             assertThat(results.get("sample2").getString("SampleCluster.cluster_id"), equalTo("CL1"));
             assertThat(results.get("sample3").getString("SampleCluster.cluster_id"), equalTo("CL2"));
             assertThat(results.get("sample5").getString("SampleCluster.cluster_id"), equalTo("CL1"));
         }
+        // Now try some existence checks.
+        assertThat("sample1 not found", db.checkForRecord("RnaSample", "sample1"));
+        assertThat("sample6 found", ! db.checkForRecord("RnaSample", "sample6"));
+        // Delete the genome.
+        db.deleteRecord("Genome", "511145.183");
+        // Verify the genome is gone, along with all the features and samples.
+        assertThat("genome not deleted", ! db.checkForRecord("Genome", "511145.183"));
+        assertThat("sample2 not deleted", ! db.checkForRecord("RnaSample", "sample2"));
+        assertThat("peg 2 not deleted", ! db.checkForRecord("Feature", "fig|511145.183.peg.2"));
+
     }
 
 }

@@ -40,7 +40,8 @@ public abstract class BaseDbProcessor extends BaseProcessor implements DbConnect
     private DbConnection.Type dbEngine;
 
     /** name of file containing the database */
-    @Option(name = "--dbfile", metaVar = "sqlite.db", usage = "name of the database file (for SQLITE)")
+    @Option(name = "--dbfile", aliases = { "--dbFile" }, metaVar = "sqlite.db",
+            usage = "name of the database file (for SQLITE)")
     private File dbFile;
 
     /** database URL for network-based databases */

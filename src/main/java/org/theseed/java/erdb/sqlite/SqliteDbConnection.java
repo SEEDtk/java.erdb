@@ -69,7 +69,7 @@ public class SqliteDbConnection extends DbConnection {
     }
 
     @Override
-    protected String getName() {
+    public String getName() {
         return this.dbFile.getAbsolutePath();
     }
 

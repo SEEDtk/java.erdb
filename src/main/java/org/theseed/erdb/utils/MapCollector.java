@@ -28,17 +28,6 @@ public class MapCollector implements Collector<DbRecord, Map<String, DbRecord>, 
     /** specification for key field */
     private String keySpec;
 
-    /**
-     * Construct a database stream collector.
-     *
-     * @param key	field spec (table.field) for the field containing the string key
-     */
-    public static MapCollector collect(String key) {
-        MapCollector retVal = new MapCollector();
-        retVal.keySpec = key;
-        return retVal;
-    }
-
     @Override
     public Supplier<Map<String, DbRecord>> supplier() {
         return HashMap::new;
@@ -73,6 +62,15 @@ public class MapCollector implements Collector<DbRecord, Map<String, DbRecord>, 
     @Override
     public Set<Characteristics> characteristics() {
         return Set.of(Characteristics.IDENTITY_FINISH, Characteristics.UNORDERED);
+    }
+
+    /**
+     * Specify the key for the map.
+     *
+     * @param value		name of the key field (table.name)
+     */
+    protected void setKeySpec(String value) {
+        this.keySpec = value;
     }
 
 }

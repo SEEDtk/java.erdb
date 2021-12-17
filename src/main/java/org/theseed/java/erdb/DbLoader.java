@@ -48,6 +48,8 @@ public class DbLoader implements AutoCloseable {
     private PreparedStatement stmt;
     /** size of current batch */
     private int batchCount;
+    /** batch size to use */
+    private int batchSize;
     /** maximum batch size */
     private static final int MAX_BATCH_SIZE = 100;
 
@@ -59,7 +61,47 @@ public class DbLoader implements AutoCloseable {
      *
      * @throws SQLException
      */
-    public DbLoader(DbConnection db, String table) throws SQLException {
+    protected DbLoader(DbConnection db, String table) throws SQLException {
+        this.init(db, table);
+    }
+
+    /**
+     * Construct a batched loader for the specified table.
+     *
+     * @param db		database connection
+     * @param table		name of table to load
+     *
+     * @throws SQLException
+     */
+    public static DbLoader batch(DbConnection db, String table) throws SQLException {
+        DbLoader retVal = new DbLoader(db, table);
+        retVal.batchSize = MAX_BATCH_SIZE;
+        return retVal;
+    }
+
+    /**
+     * Construct a one-at-a-time loader for the specified table.
+     *
+     * @param db		database connection
+     * @param table		name of table to load
+     *
+     * @throws SQLException
+     */
+    public static DbLoader single(DbConnection db, String table) throws SQLException {
+        DbLoader retVal = new DbLoader(db, table);
+        retVal.batchSize = 1;
+        return retVal;
+    }
+
+    /**
+     * Initialize a table loader.
+     *
+     * @param db		database containing table
+     * @param table		table being loaded
+     *
+     * @throws SQLException
+     */
+    private void init(DbConnection db, String table) throws SQLException {
         // Get the data for this table.
         DbTable tableData = db.getTable(table);
         Collection<DbTable.Field> fields = tableData.getFields();
@@ -110,7 +152,7 @@ public class DbLoader implements AutoCloseable {
         this.stmt.addBatch();
         this.batchCount++;
         // If the batch is full, clear it.
-        if (this.batchCount >= MAX_BATCH_SIZE)
+        if (this.batchCount >= this.batchSize)
             this.executeBatch();
     }
 

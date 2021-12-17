@@ -40,6 +40,11 @@ public enum Relop {
         public String text() {
             return " != ";
         }
+    }, LIKE {
+        @Override
+        public String text() {
+            return " LIKE ";
+        }
     };
 
     /**

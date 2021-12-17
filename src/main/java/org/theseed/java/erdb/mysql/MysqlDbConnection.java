@@ -79,7 +79,7 @@ public class MysqlDbConnection extends DbConnection {
     }
 
     @Override
-    protected String getName() {
+    public String getName() {
         return this.dbName;
     }
 
