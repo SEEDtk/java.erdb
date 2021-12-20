@@ -4,7 +4,11 @@
 package org.theseed.java.erdb.sqlite;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
+
 import java.io.File;
 import java.io.IOException;
 import java.sql.DatabaseMetaData;

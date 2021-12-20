@@ -46,7 +46,7 @@ public class DbRecord {
         // map.
         final int n = fieldNames.size();
         this.valueList = fieldTypes.stream().map(x -> x.create()).collect(Collectors.toList());
-        this.valueMap = new HashMap<String, DbValue>(n * 4 / 3);
+        this.valueMap = new HashMap<>(n * 4 / 3);
         for (int i = 0; i < n; i++) {
             this.valueMap.put(fieldNames.get(i), this.valueList.get(i));
             this.valueList.get(i).fetch(results, i+1);

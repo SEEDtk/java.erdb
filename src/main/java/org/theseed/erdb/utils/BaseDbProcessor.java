@@ -3,12 +3,13 @@
  */
 package org.theseed.erdb.utils;
 
-import org.theseed.utils.BaseProcessor;
 import java.io.File;
+
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.java.erdb.DbConnection;
+import org.theseed.utils.BaseProcessor;
 
 /**
  * This is the base class for a database command processor.  It supports connecting to the

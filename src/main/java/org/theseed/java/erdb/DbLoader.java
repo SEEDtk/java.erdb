@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.java.erdb.types.DbBoolean;
@@ -110,7 +111,7 @@ public class DbLoader implements AutoCloseable {
         String[] fieldList = new String[nFields];
         // Create the parm array and map.
         this.parms = new DbValue[nFields];
-        this.fieldMap = new HashMap<String, DbValue>(nFields * 4 / 3);
+        this.fieldMap = new HashMap<>(nFields * 4 / 3);
         // Fill all these in from the field list.
         int i = 0;
         for (DbTable.Field field : fields) {

@@ -61,7 +61,7 @@ public class DbInteger extends DbValue {
 
     @Override
     public double getDouble() {
-        return (double) this.value;
+        return this.value;
     }
 
     @Override

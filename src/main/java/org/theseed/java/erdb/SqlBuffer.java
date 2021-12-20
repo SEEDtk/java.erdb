@@ -3,6 +3,8 @@
  */
 package org.theseed.java.erdb;
 
+import java.util.List;
+
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -21,6 +23,8 @@ public class SqlBuffer {
     private StringBuilder buffer;
     /** number of parameter marks */
     private int markCount;
+    /** TRUE if we are at the start of a list, else FALSE */
+    private boolean starting;
 
     /**
      * Create a new, empty query buffer for a database.
@@ -42,6 +46,7 @@ public class SqlBuffer {
         this.buffer = new StringBuilder(init);
         this.db = db;
         this.markCount = 0;
+        this.starting = true;
     }
 
     /**
@@ -120,6 +125,7 @@ public class SqlBuffer {
     public SqlBuffer clear() {
         this.buffer.setLength(0);
         this.markCount = 0;
+        this.starting = true;
         return this;
     }
 
@@ -218,6 +224,44 @@ public class SqlBuffer {
         return this.append(string);
     }
 
+    /**
+     * Add a list of fields from a single table to this query, comma-delimited.
+     *
+     * @param table		target table
+     * @param names		list of field names
+     *
+     * @return this object, for fluent invocation
+     */
+    public SqlBuffer quote(String table, List<String> names) {
+        this.quote(table, names.get(0));
+        final int n = names.size();
+        for (int i = 1; i < n; i++)
+            this.append(", ").quote(table, names.get(i));
+        return this;
+    }
+
+    /**
+     * Denote we are starting a list.  The default delimiter is suppressed in this mode.
+     *
+     * @return this object, for fluent invocation
+     */
+    public SqlBuffer startList() {
+        this.starting = true;
+        return this;
+    }
+
+    /**
+     * Append the default delimiter.  If we are starting a list, nothing is appended.
+     *
+     * @return this object, for fluent invocation
+     */
+    public SqlBuffer appendDelim() {
+        if (this.starting)
+            this.starting = false;
+        else
+            this.append(", ");
+        return this;
+    }
 
 
 }

@@ -44,6 +44,11 @@ public class SqliteDbConnection extends DbConnection {
      * @throws SQLException
      */
     private void setup() throws SQLException {
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("SQLite suppport not available.");
+        }
         this.connect("jdbc:sqlite:" + this.dbFile.getAbsolutePath());
     }
 

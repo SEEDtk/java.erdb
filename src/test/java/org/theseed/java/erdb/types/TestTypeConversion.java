@@ -4,7 +4,10 @@
 package org.theseed.java.erdb.types;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+
 import org.junit.jupiter.api.Test;
 import org.theseed.locations.Location;
 

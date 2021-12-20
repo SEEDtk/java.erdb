@@ -27,6 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.java.erdb.DbTable.Field;
+import org.theseed.java.erdb.types.DbBoolean;
 import org.theseed.java.erdb.types.DbDate;
 import org.theseed.java.erdb.types.DbDouble;
 import org.theseed.java.erdb.types.DbInteger;
@@ -61,7 +62,7 @@ import org.theseed.locations.Location;
  * @author Bruce Parrello
  *
  */
-public class DbQuery implements AutoCloseable {
+public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
 
     // FIELDS
     /** logging facility */
@@ -117,20 +118,20 @@ public class DbQuery implements AutoCloseable {
         // Denote that so far we have no statement prepared.
         this.stmt = null;
         // Set up the list for the parameter value holders.
-        this.parms = new ArrayList<DbValue>();
+        this.parms = new ArrayList<>();
         // Create the buffers for the various statement clauses.
         this.orderByClause = new SqlBuffer(db);
         this.whereClause = new SqlBuffer(db);
         this.fromClause = new SqlBuffer(db);
         // We maintain two parallel lists for the returned fields.  These enable us to construct the
         // select clause and the field map / holder list for the prepared query statement.
-        this.fieldTypes = new ArrayList<DbType>();
-        this.fieldNames = new ArrayList<String>();
+        this.fieldTypes = new ArrayList<>();
+        this.fieldNames = new ArrayList<>();
         // Finally, we use a set object to prevent duplicate fields.
-        this.fieldsUsed = new TreeSet<String>();
+        this.fieldsUsed = new TreeSet<>();
         // Create the table map.  This enables us to get the table descriptors for all the table names
         // and aliases.
-        this.tableMap = new TreeMap<String, DbTable>();
+        this.tableMap = new TreeMap<>();
     }
 
     /**
@@ -642,6 +643,29 @@ public class DbQuery implements AutoCloseable {
         for (int value : values) {
             DbInteger intHolder = (DbInteger) this.getParm(i, DbInteger.class);
             intHolder.set(value);
+            i++;
+        }
+        return this;
+    }
+
+    /**
+     * Store boolean values in the parameter list.
+     *
+     * @param idx		index (1-based) of the first parameter to store
+     * @param values	boolean values to store
+     *
+     * @return this object, for fluent invocation
+     *
+     * @throws SQLException
+     */
+    public DbQuery setParm(int idx, boolean... values) throws SQLException {
+        this.validateParmSet(idx, values.length);
+        // Position on the indicated first parameter holder.
+        int i = idx;
+        // Fill in the slots.
+        for (boolean value : values) {
+            DbBoolean boolHolder = (DbBoolean) this.getParm(i, DbBoolean.class);
+            boolHolder.set(value);
             i++;
         }
         return this;

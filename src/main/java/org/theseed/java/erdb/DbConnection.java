@@ -183,10 +183,10 @@ public abstract class DbConnection implements AutoCloseable {
         this.metaData = this.db.getMetaData();
         // Create the table map.  It is initialized lazily: that is, we store each table
         // definition when the table is first used.
-        this.tableMap = new TreeMap<String, DbTable>();
+        this.tableMap = new TreeMap<>();
         // Insure the metadata tables exist.  We need a metadata query to get the list of all of them.
         ResultSet resultSet = this.metaData.getTables(this.getCatalog(), this.getSchema(), null, TABLE_SEARCH);
-        Set<String> allTables = new TreeSet<String>();
+        Set<String> allTables = new TreeSet<>();
         while (resultSet.next())
             allTables.add(resultSet.getString("TABLE_NAME"));
         if (! allTables.contains("_fields"))
@@ -286,7 +286,7 @@ public abstract class DbConnection implements AutoCloseable {
      * @throws SQLException
      */
     public Set<String> getKeys(String table) throws SQLException {
-        Set<String> retVal = new HashSet<String>();
+        Set<String> retVal = new HashSet<>();
         // Get the key information from the table and build the query.
         SqlBuffer buffer = new SqlBuffer(this);
         DbTable tableDesc = this.getTable(table);
@@ -330,6 +330,7 @@ public abstract class DbConnection implements AutoCloseable {
         // Return the result.  If a record was found, this will be TRUE.
         return retVal;
     }
+
 
     /**
      * Delete the specified record from the database.
@@ -464,7 +465,7 @@ public abstract class DbConnection implements AutoCloseable {
      * @throws SQLException
      */
     public List<String> getTableNames() throws SQLException {
-        List<String> retVal = new ArrayList<String>();
+        List<String> retVal = new ArrayList<>();
         ResultSet results = this.metaData.getTables(this.getCatalog(), this.getSchema(), null, TABLE_SEARCH);
         while (results.next()) {
             String tableName = results.getString("TABLE_NAME");
@@ -493,14 +494,14 @@ public abstract class DbConnection implements AutoCloseable {
         try (Statement stmt = this.db.createStatement()) {
             // We can't drop a table if it has imported keys from tables still in the database.
             // This set tracks the tables not yet dropped.
-            Set<String> unDropped = new HashSet<String>(tables);
+            Set<String> unDropped = new HashSet<>(tables);
             // This map tells us the tables dependent on this one.
-            Map<String, Set<String>> exportMap = new HashMap<String, Set<String>>(tables.size() * 4 / 3 + 1);
+            Map<String, Set<String>> exportMap = new HashMap<>(tables.size() * 4 / 3 + 1);
             String catalog = this.getCatalog();
             String schema = this.getSchema();
             for (String table : tables) {
                 ResultSet exports = this.metaData.getExportedKeys(catalog, schema, table);
-                Set<String> exportSet = new TreeSet<String>();
+                Set<String> exportSet = new TreeSet<>();
                 while (exports.next()) {
                     String otherTable = exports.getString("FKTABLE_NAME");
                     if (! otherTable.contentEquals(table))
@@ -660,5 +661,77 @@ public abstract class DbConnection implements AutoCloseable {
         }
     }
 
+    /**
+     * Retrieve the record with the specified primary key value, containing all its fields.
+     *
+     * @param table		table from which to query
+     * @param key		primary key to use
+     *
+     * @return the record found, or NULL if it does not exist
+     *
+     * @throws SQLException
+     */
+    public DbRecord getRecord(String table, String key) throws SQLException {
+        DbValue keyValue = new DbString(key);
+        return this.getRecord(table, keyValue);
+    }
+
+    /**
+     * Retrieve the record with the specified primary key value, containing all its fields.
+     *
+     * @param table		table from which to query
+     * @param key		primary key to use
+     *
+     * @return the record found, or NULL if it does not exist
+     *
+     * @throws SQLException
+     */
+    public DbRecord getRecord(String table, int key) throws SQLException {
+        DbValue keyValue = new DbInteger(key);
+        return this.getRecord(table, keyValue);
+    }
+
+    /**
+     * Retrieve the record with the specified primary key value, containing all its fields.
+     *
+     * @param table		table from which to query
+     * @param key		primary key to use
+     *
+     * @return the record found, or NULL if it does not exist
+     *
+     * @throws SQLException
+     */
+    private DbRecord getRecord(String table, DbValue valueObject) throws SQLException {
+        DbRecord retVal = null;
+        SqlBuffer buffer = new SqlBuffer(this);
+        DbTable tableDesc = this.getTable(table);
+        String keyName = tableDesc.getKeyName();
+        if (keyName == null)
+            throw new SQLException("Cannot do get-record on table " + table + ", which has no primary key.");
+        // Build the return slots for this record.  We need all the field names.
+        Collection<DbTable.Field> fields = tableDesc.getFields();
+        List<String> names = new ArrayList<String>(fields.size());
+        List<DbType> types = new ArrayList<DbType>(fields.size());
+        buffer.append("SELECT ").startList();
+        for (DbTable.Field field : fields) {
+            names.add(table + "." + field.getName());
+            types.add(field.getType());
+            buffer.appendDelim().quote(table, field.getName());
+        }
+        // Now finish the query.
+        buffer.append(" FROM ").quote(table).append(" WHERE ")
+                .quote(keyName).append(" = ").appendMark();
+        try (PreparedStatement stmt = this.createStatement(buffer)) {
+            // Store the key value in the query and execute it.
+            valueObject.store(stmt, 1);
+            ResultSet results = stmt.executeQuery();
+            if (results.next()) {
+                retVal = new DbRecord(results, names, types);
+            }
+        }
+        // Return the result.  If a record was found, this will be TRUE.
+        return retVal;
+
+    }
 
 }

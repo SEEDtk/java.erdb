@@ -196,6 +196,12 @@ public class CommonTesters {
             assertThat(loc, equalTo(locPeg2));
             assertThat("Too many records found.", ! iter.hasNext());
         }
+        DbRecord genomeRecord = db.getRecord("Genome", "83333.1");
+        assertThat(genomeRecord, nullValue());
+        genomeRecord = db.getRecord("Genome", "511145.183");
+        assertThat(genomeRecord, not(nullValue()));
+        assertThat(genomeRecord.getString("Genome.genome_id"), equalTo("511145.183"));
+        assertThat(genomeRecord.getString("Genome.genome_name"), equalTo(GENOME_NAME));
         try (DbQuery query = new DbQuery(db, "RnaSample SampleCluster&RnaSample Genome")) {
             query.between("RnaSample.process_date");
             query.isNull("RnaSample.pubmed", true);

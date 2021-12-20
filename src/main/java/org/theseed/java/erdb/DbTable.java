@@ -302,7 +302,7 @@ public class DbTable {
                 }
             }
             // Get the foreign keys (if any).  We link each connected table name to its join condition.
-            retVal.links = new TreeMap<String, Link>();
+            retVal.links = new TreeMap<>();
             // The imported keys are many-to-one relationships:  the target table's primary key appears in retVal.table.
             results = meta.getImportedKeys(catalog, schema, name);
             while (results.next())
