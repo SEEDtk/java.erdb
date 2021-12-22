@@ -121,7 +121,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         this.parms = new ArrayList<>();
         // Create the buffers for the various statement clauses.
         this.orderByClause = new SqlBuffer(db);
-        this.whereClause = new SqlBuffer(db);
+        this.whereClause = new SqlBuffer(db).startList(" AND ");
         this.fromClause = new SqlBuffer(db);
         // We maintain two parallel lists for the returned fields.  These enable us to construct the
         // select clause and the field map / holder list for the prepared query statement.
@@ -455,7 +455,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
      */
     public DbQuery orderBy(String field) throws SQLException {
         this.findComparableField(field);
-        this.orderByClause.appendDelim(", ").quoteSpec(field);
+        this.orderByClause.appendDelim().quoteSpec(field);
         return this;
     }
 
@@ -525,7 +525,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         // Create the holders.
         this.addHolders(field, 1);
         // Update the WHERE clause.
-        this.whereClause.appendDelim(" AND ").quoteSpec(field).append(op.text()).appendMark();
+        this.whereClause.appendDelim().quoteSpec(field).append(op.text()).appendMark();
         return this;
     }
 
@@ -544,7 +544,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         // Create the holders.
         this.addHolders(field, 2);
         // Update the WHERE clause.
-        this.whereClause.appendDelim(" AND ").quoteSpec(field).append(" BETWEEN ").appendMark()
+        this.whereClause.appendDelim().quoteSpec(field).append(" BETWEEN ").appendMark()
                 .append(" AND ").appendMark();
         return this;
     }
@@ -567,7 +567,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         // Create the holders.
         this.addHolders(field, count);
         // Update the WHERE clause.
-        this.whereClause.appendDelim(" AND ").quoteSpec(field).append(" IN ").addMarkList(count);
+        this.whereClause.appendDelim().quoteSpec(field).append(" IN ").addMarkList(count);
         return this;
     }
 
@@ -586,7 +586,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
         DbTable.Field fieldDescriptor = this.findComparableField(field);
         if (! fieldDescriptor.isNullable())
             throw new SQLException("Field " + field + " is not nullable.");
-        this.whereClause.appendDelim(" AND ").quoteSpec(field).append(" IS");
+        this.whereClause.appendDelim().quoteSpec(field).append(" IS");
         if (! flag)
             this.whereClause.append(" NOT");
         this.whereClause.append(" NULL");

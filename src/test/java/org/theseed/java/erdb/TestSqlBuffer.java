@@ -25,12 +25,12 @@ class TestSqlBuffer {
     void testSqlBuffer() throws SQLException {
         File dbFile = new File("data", "chinook.db");
         try (DbConnection db = new SqliteDbConnection(dbFile)) {
-            SqlBuffer buff1 = new SqlBuffer(db);
+            SqlBuffer buff1 = new SqlBuffer(db).startList(", ");
             assertThat("Buffer should be empty.", buff1.isEmpty());
             List<String> tables = db.getTableNames();
             Collections.sort(tables);
             for (String table : tables)
-                buff1.appendDelim(", ").quote(table);
+                buff1.appendDelim().quote(table);
             assertThat(buff1.toString(),
                     equalTo("[albums], [artists], [customers], [employees], [genres]," +
                             " [invoice_items], [invoices], [media_types], [playlist_track]," +
@@ -59,6 +59,10 @@ class TestSqlBuffer {
             assertThat(buff1.toString(), equalTo("SELECT [Genome].[field1], [field2]"));
             buff1.append(" FROM ").startList().appendDelim().append("Genome").appendDelim().append("Feature");
             assertThat(buff1.toString(), equalTo("SELECT [Genome].[field1], [field2] FROM Genome, Feature"));
+            buff1.append(" WHERE ").startList(" AND ").appendDelim().quote("Feature", "id").append(" = ")
+                    .appendMark().appendDelim().quote("Genome", "id").append(" = ").appendMark();
+            assertThat(buff1.toString(), equalTo(
+                    "SELECT [Genome].[field1], [field2] FROM Genome, Feature WHERE [Feature].[id] = ? AND [Genome].[id] = ?"));
         }
     }
 

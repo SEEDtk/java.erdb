@@ -25,6 +25,8 @@ public class SqlBuffer {
     private int markCount;
     /** TRUE if we are at the start of a list, else FALSE */
     private boolean starting;
+    /** delimiter for the current list (if any) */
+    private String delim;
 
     /**
      * Create a new, empty query buffer for a database.
@@ -47,6 +49,7 @@ public class SqlBuffer {
         this.db = db;
         this.markCount = 0;
         this.starting = true;
+        this.delim = ", ";
     }
 
     /**
@@ -94,19 +97,6 @@ public class SqlBuffer {
      */
     public SqlBuffer append(String string) {
         this.buffer.append(string);
-        return this;
-    }
-
-    /**
-     * Append a delimiter to the SQL statement if the statement is non-empty.
-     *
-     * @param delim		delimiter to append
-     *
-     * @return this object, for fluent invocation
-     */
-    public SqlBuffer appendDelim(String delim) {
-        if (this.buffer.length() > 0)
-            this.buffer.append(delim);
         return this;
     }
 
@@ -241,12 +231,27 @@ public class SqlBuffer {
     }
 
     /**
-     * Denote we are starting a list.  The default delimiter is suppressed in this mode.
+     * Denote we are starting a list.  The default delimiter is suppressed until it is requested once.
      *
      * @return this object, for fluent invocation
      */
     public SqlBuffer startList() {
         this.starting = true;
+        this.delim = ", ";
+        return this;
+    }
+
+    /**
+     * Denote we are starting a list.  The default delimiter is suppressed until it is requested once.
+     * This version allows you to specify the default delimiter.
+     *
+     * @param delimiter		delimiter to use (with any surrounding spaces included
+     *
+     * @return this object, for fluent invocation
+     */
+    public SqlBuffer startList(String delimiter) {
+        this.starting = true;
+        this.delim = delimiter;
         return this;
     }
 
@@ -259,7 +264,7 @@ public class SqlBuffer {
         if (this.starting)
             this.starting = false;
         else
-            this.append(", ");
+            this.append(this.delim);
         return this;
     }
 

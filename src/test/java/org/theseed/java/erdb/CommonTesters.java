@@ -246,6 +246,50 @@ public class CommonTesters {
             assertThat(results.get("sample3").getString("SampleCluster.cluster_id"), equalTo("CL2"));
             assertThat(results.get("sample5").getString("SampleCluster.cluster_id"), equalTo("CL1"));
         }
+        try (DbUpdate updater = DbUpdate.batch(db, "RnaSample")) {
+            updater.change("base_count", "project_id").primaryKey().createStatement();
+            updater.set("base_count", 1100);
+            updater.set("project_id", "proj1");
+            updater.set("sample_id", "sample1");
+            updater.update();
+            updater.set("base_count", 1101);
+            updater.set("project_id", "proj2");
+            updater.set("sample_id", "sample2");
+            updater.update();
+            updater.set("base_count", 1102);
+            updater.set("project_id", "proj3");
+            updater.set("sample_id", "sample3");
+            updater.update();
+            updater.set("base_count", 1103);
+            updater.set("project_id", "proj4");
+            updater.set("sample_id", "sample4");
+            updater.update();
+        }
+        try (DbQuery query = new DbQuery(db, "RnaSample")) {
+            query.select("RnaSample", "sample_id", "base_count", "project_id").orderBy("RnaSample.project_id");
+            Iterator<DbRecord> iter = query.iterator();
+            DbRecord record = iter.next();
+            assertThat(record.getString("RnaSample.sample_id"), equalTo("sample1"));
+            assertThat(record.getString("RnaSample.project_id"), equalTo("proj1"));
+            assertThat(record.getInt("RnaSample.base_count"), equalTo(1100));
+            record = iter.next();
+            assertThat(record.getString("RnaSample.sample_id"), equalTo("sample2"));
+            assertThat(record.getString("RnaSample.project_id"), equalTo("proj2"));
+            assertThat(record.getInt("RnaSample.base_count"), equalTo(1101));
+            record = iter.next();
+            assertThat(record.getString("RnaSample.sample_id"), equalTo("sample3"));
+            assertThat(record.getString("RnaSample.project_id"), equalTo("proj3"));
+            assertThat(record.getInt("RnaSample.base_count"), equalTo(1102));
+            record = iter.next();
+            assertThat(record.getString("RnaSample.sample_id"), equalTo("sample4"));
+            assertThat(record.getString("RnaSample.project_id"), equalTo("proj4"));
+            assertThat(record.getInt("RnaSample.base_count"), equalTo(1103));
+            record = iter.next();
+            assertThat(record.getString("RnaSample.sample_id"), equalTo("sample5"));
+            assertThat(record.getString("RnaSample.project_id"), equalTo("project2"));
+            assertThat(record.getInt("RnaSample.base_count"), equalTo(2005));
+            assertThat("Too many records returned.", ! iter.hasNext());
+        }
         // Now try some existence checks.
         assertThat("sample1 not found", db.checkForRecord("RnaSample", "sample1"));
         assertThat("sample6 found", ! db.checkForRecord("RnaSample", "sample6"));
