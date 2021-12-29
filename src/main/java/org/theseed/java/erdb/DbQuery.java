@@ -55,6 +55,9 @@ import org.theseed.locations.Location;
  * next table is reset as the starting point of the join after that.  This enables very complex query
  * paths.
  *
+ * NOTE that when using a left join, you will frequently have to left join all subsequent tables as well.
+ * Be careful to track the correct meaning.
+ *
  * This query can be used multiple times with different parameters.  The parameters are assigned an index
  * (starting from 1) in the order that they are created.  Use the "set" methods to update the parameters.
  * Each time an iterator is created, a new result set is fired off.
