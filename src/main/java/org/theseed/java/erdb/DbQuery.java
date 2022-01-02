@@ -384,9 +384,13 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
     public DbQuery select(String table, String... fields) throws SQLException {
         // Get the table descriptor.
         DbTable descriptor = this.getSpecTable(table);
+        if (descriptor == null)
+            throw new SQLException("Table + \"" + table + "\" not found in query.");
         // Loop through the fields.
         for (String field : fields) {
             DbTable.Field fieldDescriptor = descriptor.getField(field);
+            if (fieldDescriptor == null)
+                throw new SQLException("Field \"" + field + "\" not found in table " + table + ".");
             this.selectField(table, fieldDescriptor);
         }
         return this;
@@ -488,6 +492,8 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
      */
     private DbTable.Field findField(String field) throws SQLException {
         String[] parts = StringUtils.split(field, ".");
+        if (parts.length < 2)
+            throw new SQLException("Unqualified file \"" + field + "\" specified in query.");
         DbTable table = this.findTable(parts[0]);
         DbTable.Field retVal = table.getField(parts[1]);
         if (retVal == null)
