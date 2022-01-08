@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.io.LineReader;
 import org.theseed.java.erdb.DbTable.FieldDesc;
+import org.theseed.java.erdb.mysql.MysqlDbConnection;
 import org.theseed.java.erdb.sqlite.SqliteDbConnection;
 import org.theseed.java.erdb.types.DbInteger;
 import org.theseed.java.erdb.types.DbString;
@@ -111,6 +112,11 @@ public abstract class DbConnection implements AutoCloseable {
             @Override
             public DbConnection create(IParms processor) throws SQLException {
                 return new SqliteDbConnection(processor);
+            }
+        }, MYSQL {
+            @Override
+            public DbConnection create(IParms processor) throws SQLException {
+                return new MysqlDbConnection(processor);
             }
         };
 
