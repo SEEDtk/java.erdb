@@ -307,7 +307,7 @@ public class DbTable {
             results = meta.getImportedKeys(catalog, schema, name);
             while (results.next())
                 retVal.storeLink(results);
-            // The exported keys are many-to-one relationships:  retVal.table's primary key appears in the target table.
+            // The exported keys are one-to-many relationships:  retVal.table's primary key appears in the target table.
             results = meta.getExportedKeys(catalog, schema, name);
             while (results.next())
                 retVal.storeLink(results);
