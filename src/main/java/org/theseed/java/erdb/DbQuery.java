@@ -493,7 +493,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
     private DbTable.Field findField(String field) throws SQLException {
         String[] parts = StringUtils.split(field, ".");
         if (parts.length < 2)
-            throw new SQLException("Unqualified file \"" + field + "\" specified in query.");
+            throw new SQLException("Unqualified field \"" + field + "\" specified in query.");
         DbTable table = this.findTable(parts[0]);
         DbTable.Field retVal = table.getField(parts[1]);
         if (retVal == null)
