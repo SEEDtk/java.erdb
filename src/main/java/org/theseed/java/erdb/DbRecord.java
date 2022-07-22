@@ -94,6 +94,19 @@ public class DbRecord {
     }
 
     /**
+     * @return the specified field value as a string, or as an empty string if it is NULL
+     *
+     * @param field		field specification (table.field)
+     *
+     * @throws SQLException
+     */
+    public String getReportString(String field) throws SQLException {
+        String retVal = this.getString(field);
+        if (retVal == null) retVal = "";
+        return retVal;
+    }
+
+    /**
      * @return the specified field value as an integer
      *
      * @param field		field specification (table.field)
