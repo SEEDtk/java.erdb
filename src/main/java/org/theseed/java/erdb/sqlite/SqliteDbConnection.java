@@ -63,6 +63,8 @@ public class SqliteDbConnection extends DbConnection {
         this.dbFile = processor.getDbFile();
         if (this.dbFile == null)
             throw new SQLException("Database file is required for SQLITE databases.");
+        if (! this.dbFile.canRead())
+            throw new SQLException("SQLite data file " + this.dbFile + " is not found or unreadable.");
         this.setup();
     }
 
