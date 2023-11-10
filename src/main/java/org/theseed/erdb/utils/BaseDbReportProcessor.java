@@ -10,8 +10,8 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 
 import org.kohsuke.args4j.Option;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.java.erdb.DbConnection;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This is a variant of a database command processor that produces a report to a flat file.  It supports
