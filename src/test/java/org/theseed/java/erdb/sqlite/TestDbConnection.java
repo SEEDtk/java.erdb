@@ -30,34 +30,36 @@ public class TestDbConnection {
 
     @Test
     public void testTable() throws SQLException {
-        DbConnection db = new SqliteDbConnection(new File("data", "chinook.db"));
-        DbTable tracks = db.getTable("tracks");
-        assertThat(tracks.getType("TrackId"), equalTo(DbType.INTEGER));
-        assertThat(tracks.getType("Name"), equalTo(DbType.STRING));
-        assertThat(tracks.getType("AlbumId"), equalTo(DbType.INTEGER));
-        assertThat(tracks.getType("MediaTypeId"), equalTo(DbType.INTEGER));
-        assertThat(tracks.getType("GenreId"), equalTo(DbType.INTEGER));
-        assertThat(tracks.getType("Composer"), equalTo(DbType.STRING));
-        assertThat(tracks.getType("Milliseconds"), equalTo(DbType.INTEGER));
-        assertThat(tracks.getType("Bytes"), equalTo(DbType.INTEGER));
-        assertThat(tracks.getType("UnitPrice"), equalTo(DbType.DOUBLE));
-        assertThat("TrackId is nullable", ! tracks.isNullable("TrackId"));
-        assertThat("Name is nullable", ! tracks.isNullable("Name"));
-        assertThat("AlbumId is not nullable", tracks.isNullable("AlbumId"));
-        assertThat("MediaTypeId is nullable", ! tracks.isNullable("MediaTypeId"));
-        assertThat("GenreId is not nullable", tracks.isNullable("GenreId"));
-        assertThat("Composer is not nullable", tracks.isNullable("Composer"));
-        assertThat("Milliseconds is nullable", ! tracks.isNullable("Milliseconds"));
-        assertThat("Bytes is not nullable", tracks.isNullable("Bytes"));
-        assertThat("UnitPrice is nullable", ! tracks.isNullable("UnitPrice"));
-        assertThat(tracks.getLink("artists"), nullValue());
+        try (DbConnection db = new SqliteDbConnection(new File("data", "chinook.db"))) {
+            DbTable tracks = db.getTable("tracks");
+            assertThat(tracks.getType("TrackId"), equalTo(DbType.INTEGER));
+            assertThat(tracks.getType("Name"), equalTo(DbType.STRING));
+            assertThat(tracks.getType("AlbumId"), equalTo(DbType.INTEGER));
+            assertThat(tracks.getType("MediaTypeId"), equalTo(DbType.INTEGER));
+            assertThat(tracks.getType("GenreId"), equalTo(DbType.INTEGER));
+            assertThat(tracks.getType("Composer"), equalTo(DbType.STRING));
+            assertThat(tracks.getType("Milliseconds"), equalTo(DbType.INTEGER));
+            assertThat(tracks.getType("Bytes"), equalTo(DbType.INTEGER));
+            assertThat(tracks.getType("UnitPrice"), equalTo(DbType.DOUBLE));
+            assertThat("TrackId is nullable", ! tracks.isNullable("TrackId"));
+            assertThat("Name is nullable", ! tracks.isNullable("Name"));
+            assertThat("AlbumId is not nullable", tracks.isNullable("AlbumId"));
+            assertThat("MediaTypeId is nullable", ! tracks.isNullable("MediaTypeId"));
+            assertThat("GenreId is not nullable", tracks.isNullable("GenreId"));
+            assertThat("Composer is not nullable", tracks.isNullable("Composer"));
+            assertThat("Milliseconds is nullable", ! tracks.isNullable("Milliseconds"));
+            assertThat("Bytes is not nullable", tracks.isNullable("Bytes"));
+            assertThat("UnitPrice is nullable", ! tracks.isNullable("UnitPrice"));
+            assertThat(tracks.getLink("artists"), nullValue());
+        }
     }
 
     @Test
     public void testMetaData() throws SQLException {
-        DbConnection db = new SqliteDbConnection(new File("data", "chinook.db"));
-        DatabaseMetaData meta = db.getMetaData();
-        assertThat("Does not support batching.", meta.supportsBatchUpdates());
+        try (DbConnection db = new SqliteDbConnection(new File("data", "chinook.db"))) {
+            DatabaseMetaData meta = db.getMetaData();
+            assertThat("Does not support batching.", meta.supportsBatchUpdates());
+        }
     }
 
     @Test void testDbLoad() throws SQLException, IOException {
