@@ -16,8 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.theseed.erdb.utils.DbCollectors;
 import org.theseed.java.erdb.types.DbDate;
 import org.theseed.java.erdb.types.DbLocation;
@@ -38,8 +36,6 @@ public class CommonTesters {
 
     private static final double[] ARRAY_SAMPLE3 = new double[] { 0.0, -4.7, 2.0, 3.0, 4.0, 5.0 };
 
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(CommonTesters.class);
 
     // static fields used
     private static final Location locPeg1 = Location.create("511145.1832:NODE_1_length_927033_cov_53.679905", 2000, 3000);

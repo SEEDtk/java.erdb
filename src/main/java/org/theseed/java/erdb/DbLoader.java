@@ -44,6 +44,7 @@ public class DbLoader extends DbBaseUpdate {
      */
     public static DbLoader batch(DbConnection db, String table) throws SQLException {
         DbLoader retVal = new DbLoader(db, table, MAX_BATCH_SIZE);
+        retVal.initialize(db, table);
         return retVal;
     }
 

@@ -24,7 +24,7 @@ public class DbTable {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(DbTable.class);
+    private static final Logger log = LoggerFactory.getLogger(DbTable.class);
     /** parent database */
     private DbConnection db;
     /** name of the table */

@@ -12,8 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.theseed.java.erdb.types.DbBoolean;
 import org.theseed.java.erdb.types.DbDate;
 import org.theseed.java.erdb.types.DbDouble;
@@ -42,8 +40,6 @@ import org.theseed.locations.Location;
 public abstract class DbBaseUpdate implements AutoCloseable {
 
     // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(DbBaseUpdate.class);
     /** parent database connection */
     private DbConnection db;
     /** array of parameter value objects */
@@ -55,7 +51,7 @@ public abstract class DbBaseUpdate implements AutoCloseable {
     /** size of current batch */
     private int batchCount;
     /** batch size to use */
-    private int batchSize;
+    private final int batchSize;
     /** table field descriptor */
     private DbTable tableData;
     /** maximum batch size */
@@ -70,9 +66,19 @@ public abstract class DbBaseUpdate implements AutoCloseable {
      *
      * @throws SQLException
      */
-    public DbBaseUpdate(DbConnection db, String table, int batchSize) throws SQLException {
+    protected DbBaseUpdate(DbConnection db, String table, int batchSize) throws SQLException {
         this.init(db, table);
         this.batchSize = batchSize;
+    }
+
+    /**
+     * Call this method after construction to complete initialization.
+     *
+     * @param db        database connection
+     * @param table     name of table to load
+     * @throws SQLException
+     */
+    protected void initialize(DbConnection db, String table) throws SQLException {
         this.initCommand(db, table);
     }
 
@@ -102,7 +108,7 @@ public abstract class DbBaseUpdate implements AutoCloseable {
         // Get the number of fields so we can allocate memory.
         final int nFields = this.tableData.getFields().size();
         // Create the parm array and map.
-        this.parms = new ArrayList<DbValue>(nFields);
+        this.parms = new ArrayList<>(nFields);
         this.fieldMap = new HashMap<>(nFields * 4 / 3);
         // Denote we have an empty batch and no statement.
         this.batchCount = 0;

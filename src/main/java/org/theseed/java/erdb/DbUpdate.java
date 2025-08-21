@@ -4,6 +4,7 @@
 package org.theseed.java.erdb;
 
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -48,6 +49,7 @@ public class DbUpdate extends DbBaseUpdate {
      */
     public static DbUpdate single(DbConnection db, String table) throws SQLException {
         DbUpdate retVal = new DbUpdate(db, table, 1);
+        retVal.initialize(db, table);
         return retVal;
     }
 
@@ -67,8 +69,8 @@ public class DbUpdate extends DbBaseUpdate {
     @Override
     protected void initCommand(DbConnection db, String table) throws SQLException {
         // Denote the statement is currently empty.
-        this.filterFields = new TreeSet<String>();
-        this.setFields = new TreeSet<String>();
+        this.filterFields = new TreeSet<>();
+        this.setFields = new TreeSet<>();
         this.stmtCreated = false;
     }
 
@@ -80,8 +82,7 @@ public class DbUpdate extends DbBaseUpdate {
      * @return this object, for fluent invocation
      */
     public DbUpdate change(String... fields) {
-        for (String field : fields)
-            this.setFields.add(field);
+        this.setFields.addAll(Arrays.asList(fields));
         return this;
     }
 
@@ -94,8 +95,7 @@ public class DbUpdate extends DbBaseUpdate {
      * @return this object, for fluent invocation
      */
     public DbUpdate filter(String... fields) {
-        for (String field : fields)
-            this.filterFields.add(field);
+        this.filterFields.addAll(Arrays.asList(fields));
         return this;
     }
 
@@ -145,7 +145,7 @@ public class DbUpdate extends DbBaseUpdate {
             this.addParm(field);
         }
         // Start the filter clause.
-        if (this.filterFields.size() > 0) {
+        if (! this.filterFields.isEmpty()) {
             buffer.append(" WHERE ").startList(" AND ");
             // Add all the filtering fields.
             for (String field : this.filterFields) {

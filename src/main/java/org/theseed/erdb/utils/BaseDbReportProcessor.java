@@ -10,6 +10,8 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 
 import org.kohsuke.args4j.Option;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.basic.ParseFailureException;
 import org.theseed.java.erdb.DbConnection;
 
@@ -34,6 +36,9 @@ import org.theseed.java.erdb.DbConnection;
  */
 public abstract class BaseDbReportProcessor extends BaseDbProcessor {
 
+    // FIELDS
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(BaseDbReportProcessor.class);
     /** output stream */
     private OutputStream outStream;
 

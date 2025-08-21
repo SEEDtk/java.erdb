@@ -45,7 +45,7 @@ public abstract class DbConnection implements AutoCloseable {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(DbConnection.class);
+    private static final Logger log = LoggerFactory.getLogger(DbConnection.class);
     /** connection to the database */
     private Connection db;
     /** metadata for the database */

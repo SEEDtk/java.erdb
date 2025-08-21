@@ -24,8 +24,6 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.theseed.java.erdb.DbTable.Field;
 import org.theseed.java.erdb.types.DbBoolean;
 import org.theseed.java.erdb.types.DbDate;
@@ -68,8 +66,6 @@ import org.theseed.locations.Location;
 public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
 
     // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(DbQuery.class);
     /** prepared statement for the query */
     private PreparedStatement stmt;
     /** map of table name aliases to table descriptors */
@@ -228,6 +224,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
      *
      * @return the iterator for this query's records
      */
+    @Override
     public Iterator<DbRecord> iterator() {
         try {
             return this.new Iter();
@@ -313,6 +310,7 @@ public class DbQuery implements AutoCloseable, Iterable<DbRecord> {
      *
      * @return a spliterator for this query
      */
+    @Override
     public Spliterator<DbRecord> spliterator() {
         return Spliterators.spliteratorUnknownSize(this.iterator(), Spliterator.IMMUTABLE + Spliterator.NONNULL);
     }

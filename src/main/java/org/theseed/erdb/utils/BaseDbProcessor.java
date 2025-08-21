@@ -6,8 +6,6 @@ package org.theseed.erdb.utils;
 import java.io.File;
 
 import org.kohsuke.args4j.Option;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.theseed.basic.BaseProcessor;
 import org.theseed.java.erdb.DbConnection;
 
@@ -29,10 +27,6 @@ import org.theseed.java.erdb.DbConnection;
  *
  */
 public abstract class BaseDbProcessor extends BaseProcessor implements DbConnection.IParms {
-
-    // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BaseDbProcessor.class);
 
     // COMMAND-LINE OPTIONS
 
