@@ -63,6 +63,7 @@ public class DbUpdate extends DbBaseUpdate {
      */
     public static DbUpdate batch(DbConnection db, String table) throws SQLException {
         DbUpdate retVal = new DbUpdate(db, table, DbBaseUpdate.MAX_BATCH_SIZE);
+        retVal.initialize(db, table);
         return retVal;
     }
 

@@ -24,7 +24,7 @@ public class SqliteDbConnection extends DbConnection {
 
     // FIELDS
     /** database file */
-    private File dbFile;
+    private final File dbFile;
 
     /**
      * Create a database connection to an SQLite database.
